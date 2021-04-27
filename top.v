@@ -3,6 +3,7 @@
 
 `include "registerToPixel.v"
 `include "alu.v"
+`include "sprite.v"
 
 module pong(clk_16, vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B, quadA, quadB, USBPU);
 
@@ -69,9 +70,21 @@ module pong(clk_16, vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B, quadA, quadB, U
                      .column(column),
                      .pixel(pixel));
 
-  wire r = display_on && 0;
-  wire g = display_on && pixel && (hpos[9:7] == 3'b010);
-  wire b = display_on && 0;
+  wire [3:0] spriteLine = vpos[6:3];
+  wire [3:0] spriteColumn = hpos [6:3];
+  wire redPixel;
+  wire greenPixel;
+  wire bluePixel;
+
+  drawSprite ds(.line(spriteLine),
+                .column(spriteColumn),
+                .red(redPixel),
+                .green(greenPixel),
+                .blue(bluePixel));
+
+  wire r = display_on && (redPixel && (hpos[9:7] == 3'b000));
+  wire g = display_on && (pixel && (hpos[9:7] == 3'b010)) || (greenPixel && (hpos[9:7] == 3'b000));
+  wire b = display_on && (bluePixel && (hpos[9:7] == 3'b000));
 
   reg vga_R, vga_G, vga_B;
   always @(posedge clk)
