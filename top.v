@@ -42,6 +42,40 @@ module pong(clk_16, vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B, quadA, quadB, U
                            .hpos(hpos),
                            .vpos(vpos));
 
+  // player position
+  reg [9:0] player_x = 100;
+  reg [9:0] player_y = 150;
+
+  // car bitmap ROM and associated wires
+  wire [3:0] spriteLine;
+  wire [63:0] spriteBits;
+
+  spriteBitmap bitmap(.line(spriteLine),
+                      .bits(spriteBits));
+
+  // convert player X/Y to 9 bits and compare to CRT hpos/vpos
+  wire vstart = player_y == vpos;
+  wire hstart = player_x == hpos;
+
+  wire redPixel;
+  wire greenPixel;
+  wire bluePixel;
+  wire alphaPixel;
+  wire in_progress;	// 1 = rendering taking place on scanline
+
+  // sprite renderer module
+  SpriteRenderer renderer(.theClk(clk),
+                          .vstart(vstart),
+                          .load(vga_h_sync),
+                          .hstart(hstart),
+                          .theSpriteLine(spriteLine),
+                          .theSpriteBits(spriteBits),
+                          .red(redPixel),
+                          .green(greenPixel),
+                          .blue(bluePixel),
+                          .alpha(alphaPixel),
+                          .in_progress(in_progress));
+
   wire [15:0] result;
   Alu alu1(.operand1(register[1]),
            .operand2(register[2]),
@@ -69,23 +103,15 @@ module pong(clk_16, vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B, quadA, quadB, U
                      .line(line),
                      .column(column),
                      .pixel(pixel));
+  wire r = (redPixel || !alphaPixel) && display_on;
+  wire g = (greenPixel || !alphaPixel) && display_on;
+  wire b = (bluePixel || !alphaPixel) && display_on;
 
-  wire [3:0] spriteLine = vpos[6:3];
-  wire [3:0] spriteColumn = hpos [6:3];
-  wire redPixel;
-  wire greenPixel;
-  wire bluePixel;
-
-  drawSprite ds(.line(spriteLine),
-                .column(spriteColumn),
-                .red(redPixel),
-                .green(greenPixel),
-                .blue(bluePixel));
-
-  wire r = display_on && (redPixel && (hpos[9:7] == 3'b000));
-  wire g = display_on && (pixel && (hpos[9:7] == 3'b010)) || (greenPixel && (hpos[9:7] == 3'b000));
-  wire b = display_on && (bluePixel && (hpos[9:7] == 3'b000));
-
+/*
+  wire r = display_on && ((redPixel && alphaPixel && in_progress));
+  wire g = display_on && (pixel && (hpos[9:7] == 3'b010)) || (greenPixel && alphaPixel);
+  wire b = display_on && ((bluePixel && alphaPixel));
+*/
   reg vga_R, vga_G, vga_B;
   always @(posedge clk)
   begin

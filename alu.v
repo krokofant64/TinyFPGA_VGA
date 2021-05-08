@@ -8,7 +8,7 @@ module Alu(operand1, operand2, operation, result);
   input [3:0] operation;
   output reg [15:0] result;
 
-  always @(operand1, operand2, operation)
+  always @(*)
   begin
     case (operation)
       4'b000: result = operand1 + operand2;
