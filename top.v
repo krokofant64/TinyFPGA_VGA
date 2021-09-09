@@ -76,10 +76,20 @@ module pong(clk_16, vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B, quadA, quadB, U
                           .alpha(alphaPixel),
                           .in_progress(in_progress));
 
-  wire [15:0] result;
+  wire carry = 0;
+  wire [16:0] result;
+  reg enableAlu = 1'b1;
+  reg enableShift = 1'b0;
+  reg enableLoad = 1'b0;
   Alu alu1(.operand1(register[1]),
            .operand2(register[2]),
-           .operation(4'b011),
+           .carry(carry),
+           .enableAlu(enableAlu),
+           .aluOperation(`AND_OP),
+           .enableShift(enableShift),
+           .shiftOperation(3'b000),
+           .enableLoad(enableLoad),
+           .loadOperation(3'b000),
            .result(result));
 
   always @(posedge vga_v_sync)
@@ -90,8 +100,8 @@ module pong(clk_16, vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B, quadA, quadB, U
     register[3] = register[3] + 4;
     register[4] = register[4] + 5;
     register[5] = register[5] + 6;
-    register[6] = register[6] + 7;
-    register[7] = result;
+    register[6] = result[16];
+    register[7] = result[15:0];
   end
 
   wire pixel;
