@@ -77,20 +77,22 @@ module pong(clk_16, vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B, quadA, quadB, U
                           .in_progress(in_progress));
 
   wire carry = 0;
-  wire [16:0] result;
+  wire carryOut;
+  wire [15:0] result;
   reg enableAlu = 1'b1;
   reg enableShift = 1'b0;
   reg enableLoad = 1'b0;
   Alu alu1(.operand1(register[1]),
            .operand2(register[2]),
-           .carry(carry),
+           .carryIn(carry),
            .enableAlu(enableAlu),
            .aluOperation(`AND_OP),
            .enableShift(enableShift),
            .shiftOperation(3'b000),
            .enableLoad(enableLoad),
            .loadOperation(3'b000),
-           .result(result));
+           .result(result),
+           .carryOut(carryOut));
 
   always @(posedge vga_v_sync)
   begin
@@ -100,7 +102,7 @@ module pong(clk_16, vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B, quadA, quadB, U
     register[3] = register[3] + 4;
     register[4] = register[4] + 5;
     register[5] = register[5] + 6;
-    register[6] = result[16];
+    register[6] = carryOut;
     register[7] = result[15:0];
   end
 
