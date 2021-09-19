@@ -78,6 +78,8 @@ module pong(clk_16, vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B, quadA, quadB, U
 
   wire carry = 0;
   wire carryOut;
+  wire zeroOut;
+  wire negativeOut;
   wire [15:0] result;
   reg enableAlu = 1'b1;
   reg enableShift = 1'b0;
@@ -85,14 +87,14 @@ module pong(clk_16, vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B, quadA, quadB, U
   Alu alu1(.operand1(register[1]),
            .operand2(register[2]),
            .carryIn(carry),
+           .operation(`AND_OP),
            .enableAlu(enableAlu),
-           .aluOperation(`AND_OP),
            .enableShift(enableShift),
-           .shiftOperation(3'b000),
            .enableLoad(enableLoad),
-           .loadOperation(3'b000),
            .result(result),
-           .carryOut(carryOut));
+           .carryOut(carryOut),
+           .zeroOut(zeroOut),
+           .negativeOut(negativeOut));
 
   always @(posedge vga_v_sync)
   begin

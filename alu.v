@@ -26,28 +26,27 @@
 `define LDLZI_OP 3'b110
 `define LDHZI_OP 3'b111
 
-module Alu(operand1, operand2, carryIn, enableAlu, aluOperation, enableShift, shiftOperation, enableLoad, loadOperation, result, carryOut);
+module Alu(operand1, operand2, carryIn, operation, enableAlu, enableShift, enableLoad, result, carryOut, zeroOut, negativeOut);
 
   parameter N = 16;	// default width = 16 bits
 
-  input [N-1:0]    operand1;
-  input [N-1:0]    operand2;
-  input            carryIn;
-  input            enableAlu;
-  input [2:0]      aluOperation;
-  input            enableShift;
-  input [2:0]      shiftOperation;
-  input            enableLoad;
-  input[2:0]       loadOperation;
-//  output reg [N:0] result;
+  input [N-1:0]      operand1;
+  input [N-1:0]      operand2;
+  input              carryIn;
+  input [2:0]        operation;
+  input              enableAlu;
+  input              enableShift;
+  input              enableLoad;
   output reg         carryOut;
+  output reg         zeroOut;
+  output reg         negativeOut;
   output reg [N-1:0] result;
 
 
   always @(*)
   begin
     if (enableAlu)
-      case (aluOperation)
+      case (operation)
         `ADD_OP:   {carryOut, result} = operand1 + operand2;
         `ADC_OP:   {carryOut, result} = operand1 + operand2 + (carryIn ? 1 : 0);
         `SUB_OP:   {carryOut, result} = operand1 - operand2;
@@ -59,7 +58,7 @@ module Alu(operand1, operand2, carryIn, enableAlu, aluOperation, enableShift, sh
       endcase
     else
     if (enableShift)
-      case (shiftOperation)
+      case (operation)
         `SHR_OP:   {carryOut, result} = {operand1[0], 1'b0, operand1[N-1:1]};
         `SHL_OP:   {carryOut, result} = {operand1, 1'b0};
         `ASHR_OP:  {carryOut, result} = {operand1[0], operand1[N-1], operand1[N-1], operand1[N-2:1]};
@@ -68,7 +67,7 @@ module Alu(operand1, operand2, carryIn, enableAlu, aluOperation, enableShift, sh
       endcase
     else
     if (enableLoad)
-      case (loadOperation)
+      case (operation)
         `COPY_OP:  {carryOut, result} = {carryIn, operand1};
         `LDL_OP:   {carryOut, result} = {carryIn, 8'b0, operand1[N/2-1:0]};
         `LDH_OP:   {carryOut, result} = {carryIn, 8'b0, operand1[N-1:N/2]};
@@ -78,6 +77,8 @@ module Alu(operand1, operand2, carryIn, enableAlu, aluOperation, enableShift, sh
         `LDLZI_OP: {carryOut, result} = {carryIn, 8'b0, operand1[N/2-1:0]};
         `LDHZI_OP: {carryOut, result} = {carryIn, operand1[N-1:N/2], 8'b0};
       endcase
+    negativeOut <= result[N-1];
+    zeroOut <= result == 0;
   end
 endmodule
 
