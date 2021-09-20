@@ -36,13 +36,14 @@ module K16Cpu(clk, reset, hold, busy,
   localparam RESET   = 0;
   localparam FETCH_INSTR = 1;
   localparam DECODE_INSTR = 2;
-  localparam WAIT_READ_MEM = 3;
-  localparam WAIT_WRITE_MEM = 4;
-  localparam WAIT_WRITE_RETURN_ADDRESS = 5;
+  localparam STORE_RESULT = 3;
+  localparam WAIT_READ_MEM = 4;
+  localparam WAIT_WRITE_MEM = 5;
+  localparam WAIT_WRITE_RETURN_ADDRESS = 6;
 
   reg [15:0] operand1;
   reg [15:0] operand2;
-  wire [15:0] destination;
+  wire [15:0] result;
   reg [2:0]  operation;
   reg        enableAlu;
   reg        enableShift;
@@ -58,7 +59,7 @@ module K16Cpu(clk, reset, hold, busy,
     .enableAlu(enableAlu),
     .enableShift(enableShift),
     .enableLoad(enableLoad),
-    .result(destination),
+    .result(result),
     .carryOut(carryOut),
     .zeroOut(zeroOut),
     .negativeOut(negativeOut)
@@ -94,25 +95,25 @@ module K16Cpu(clk, reset, hold, busy,
               casez (data_in)
                 16'b000?????????0???:
                   begin
+                    $display("DECODE_INSTR - ADD");
                     // ADD (0), ADC (1), SUB (2), SBC (3), AND (4), OR (5), XOR (6), NOT (7)
                     operation <= data_in[2:0];
                     operand1 <= register[data_in[9:7]];
                     operand2 <= register[data_in[6:4]];
-                    register[data_in[12:10]] <= destination;
                     enableAlu <= 1;
                     enableShift <= 0;
                     enableLoad <= 0;
-                    $display("R0=%04X,R1=%04X,R2=%04X,R3=%04X,R4=%04X,R5=%04X,R6=%04X,R7=%04X",register[0],register[1],register[2],register[3],register[4],register[5],register[6],register[7]);
+                    state <= STORE_RESULT;
                   end
                 16'b000?????????10??:
                   begin
                     // LD (0), LDL (1), LDH (2), SWP (3)
                     operation <= {1'b0, data_in[1:0]};
                     operand1 <= register[data_in[9:7]];
-                    register[data_in[12:10]] <= destination;
                     enableAlu <= 0;
                     enableShift <= 0;
                     enableLoad <= 1;
+                    state <= STORE_RESULT;
                   end
                 16'b000?????????1100:
                   begin
@@ -120,10 +121,10 @@ module K16Cpu(clk, reset, hold, busy,
                     operation <= 3'b000;
                     operand1 <= register[data_in[9:7]];
                     operand2 <= 16'h0001;
-                    register[data_in[12:10]] <= destination;
                     enableAlu <= 1;
                     enableShift <= 0;
                     enableLoad <= 0;
+                    state <= STORE_RESULT;
                   end
                 16'b000?????????1110:
                   begin
@@ -131,10 +132,10 @@ module K16Cpu(clk, reset, hold, busy,
                     operation <= 3'b010;
                     operand1 <= register[data_in[9:7]];
                     operand2 <= 16'h0001;
-                    register[data_in[12:10]] <= destination;
                     enableAlu <= 1;
                     enableShift <= 0;
                     enableLoad <= 0;
+                    state <= STORE_RESULT;
                   end
                 16'b000?????????1111:
                   begin
@@ -151,24 +152,44 @@ module K16Cpu(clk, reset, hold, busy,
                     // SHR (0), ASHL/SHL (1), ASHR (2), ROR (3), ROL(4)
                     operation <= {data_in[2:0]};
                     operand1 <= register[data_in[9:7]];
-                    register[data_in[12:10]] <= destination;
+                    register[data_in[12:10]] <= result;
                     enableAlu <= 0;
                     enableShift <= 1;
                     enableLoad <= 0;
+                    state <= STORE_RESULT;
                   end
                 16'b001?????????10??:
                   begin
-                    // SHR (0), ASHL/SHL (1), ASHR (2), ROR (3), ROL(4)
+                    // CLC (0), SEC (1), CLI (2), SEI (3)
                     operation <= {data_in[2:0]};
                     operand1 <= register[data_in[9:7]];
-                    register[data_in[12:10]] <= destination;
                     enableAlu <= 0;
                     enableShift <= 1;
                     enableLoad <= 0;
+                    state <= STORE_RESULT;
+                  end
+                16'b011?????????????:
+                  begin
+                  $display("DECODE_INSTR - LD Immediate");
+                  operation <= {1'b1, data_in[9:8]};
+                  operand1 <= data_in[7:0];
+                  enableAlu <= 0;
+                  enableShift <= 0;
+                  enableLoad <= 1;
+                  state <= STORE_RESULT;
+                  $display("operation=%03B,operand1=%02X,dest=%03B",operation,operand1,data_in[12:10]);
                   end
               endcase
+              instruction <= data_in;
+           end
+         STORE_RESULT:
+           begin
+              $display("STORE_RESULT");
+              register[data_in[12:10]] <= result;
+              state <= FETCH_INSTR;
            end
        endcase
+       $display("R0=%04X,R1=%04X,R2=%04X,R3=%04X,R4=%04X,R5=%04X,R6=%04X,R7=%04X,Instruction=%04X,Address=%04x",register[0],register[1],register[2],register[3],register[4],register[5],register[6],register[7],instruction,address);
     end
 endmodule
 `endif
