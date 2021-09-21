@@ -39,6 +39,7 @@ initial begin
 
   ram[0] = 16'h6257;
   ram[1] = 16'h0480;
+  ram[2] = 16'h9FFF;
 
   $monitor("clk=%b,reset=%b,hold=%b,busy=%b,address=%04X,data_in=%04X,data_out=%04X,write=%b",clk,reset,hold,busy,address,data_in,data_out,write);
 

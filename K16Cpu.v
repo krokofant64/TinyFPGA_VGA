@@ -4,14 +4,14 @@
 module K16Cpu(clk, reset, hold, busy,
              address, data_in, data_out, write);
 
-  input              clk;
-  input              reset;
-  input              hold;
-  output reg         busy;
+  input             clk;
+  input             reset;
+  input             hold;
+  output reg        busy;
   output reg [15:0] address;
   input  [15:0]     data_in;
   output [15:0]     data_out;
-  output reg         write;
+  output reg        write;
 
   // 8 16-bit registers
   reg [15:0] register[0:7];
@@ -30,16 +30,18 @@ module K16Cpu(clk, reset, hold, busy,
   reg enableInterrupt;
 
   // CPU state
-  reg [2:0] state;
+  reg [4:0] state;
 
   // CPU states
   localparam RESET   = 0;
   localparam FETCH_INSTR = 1;
-  localparam DECODE_INSTR = 2;
-  localparam STORE_RESULT = 3;
-  localparam WAIT_READ_MEM = 4;
-  localparam WAIT_WRITE_MEM = 5;
-  localparam WAIT_WRITE_RETURN_ADDRESS = 6;
+  localparam WAIT_INSTR = 2;
+  localparam DECODE_INSTR = 3;
+  localparam STORE_RESULT = 4;
+  localparam JUMP = 4;
+  localparam WAIT_READ_MEM = 6;
+  localparam WAIT_WRITE_MEM = 7;
+  localparam WAIT_WRITE_RETURN_ADDRESS = 8;
 
   reg [15:0] operand1;
   reg [15:0] operand2;
@@ -84,14 +86,25 @@ module K16Cpu(clk, reset, hold, busy,
            end
          FETCH_INSTR:
            begin
-           $display("FETCH_INSTR");
+             $display("FETCH_INSTR");
              address <= register[PC];
-             register[PC] <= register[PC] + 1;
+             operation <= 0;
+             operand1 <= register[PC];
+             operand2 <= 1;
+             enableAlu <= 1;
+             enableShift <= 0;
+             enableLoad <= 0;
+             state <= WAIT_INSTR;
+           end
+         WAIT_INSTR:
+           begin
+             $display("WAIT_INSTR address=%04X", address);
+             register[PC] <= result;
              state <= DECODE_INSTR;
            end
          DECODE_INSTR:
            begin
-              $display("DECODE_INSTR");
+              $display("DECODE_INSTR address=%04X", address);
               casez (data_in)
                 16'b000?????????0???:
                   begin
@@ -104,6 +117,7 @@ module K16Cpu(clk, reset, hold, busy,
                     enableShift <= 0;
                     enableLoad <= 0;
                     state <= STORE_RESULT;
+                    $display("operation=%03B,operand1=%03B,operand2=%03B,dest=%03B",data_in[2:0],data_in[9:7],data_in[6:4],data_in[12:10]);
                   end
                 16'b000?????????10??:
                   begin
@@ -169,6 +183,7 @@ module K16Cpu(clk, reset, hold, busy,
                     state <= STORE_RESULT;
                   end
                 16'b011?????????????:
+                  // Load from immediate
                   begin
                   $display("DECODE_INSTR - LD Immediate");
                   operation <= {1'b1, data_in[9:8]};
@@ -179,17 +194,39 @@ module K16Cpu(clk, reset, hold, busy,
                   state <= STORE_RESULT;
                   $display("operation=%03B,operand1=%02X,dest=%03B",operation,operand1,data_in[12:10]);
                   end
+                16'b100?????????????:
+                  // JMP, HLT
+                  begin
+                  $display("DECODE_INSTR - Jump");
+                  operation <= 0;
+                  operand1 <= register[data_in[12:10]];
+                  operand2 <= {data_in[9], data_in[9], data_in[9], data_in[9], data_in[9], data_in[9], data_in[9:0]};
+                  enableAlu <= 1;
+                  enableShift <= 0;
+                  enableLoad <= 0;
+                  state <= JUMP;
+                  $display("operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{data_in[9], data_in[9], data_in[9], data_in[9], data_in[9], data_in[9], data_in[9:0]});
+                  end
               endcase
               instruction <= data_in;
            end
          STORE_RESULT:
            begin
-              $display("STORE_RESULT");
+              $display("STORE_RESULT R%d = %04X",data_in[12:10], result);
               register[data_in[12:10]] <= result;
+              enableAlu <= 0;
+              enableShift <= 0;
+              enableLoad <= 0;
               state <= FETCH_INSTR;
            end
+         JUMP:
+           begin
+             $display("JUMP");
+             register[PC] <= result;
+             state <= FETCH_INSTR;
+           end
        endcase
-       $display("R0=%04X,R1=%04X,R2=%04X,R3=%04X,R4=%04X,R5=%04X,R6=%04X,R7=%04X,Instruction=%04X,Address=%04x",register[0],register[1],register[2],register[3],register[4],register[5],register[6],register[7],instruction,address);
+       $display("State=%02X,R0=%04X,R1=%04X,R2=%04X,R3=%04X,R4=%04X,R5=%04X,R6=%04X,R7=%04X,Address=%04x,data_in=%04X",state,register[0],register[1],register[2],register[3],register[4],register[5],register[6],register[7],address,data_in);
     end
 endmodule
 `endif
