@@ -19,8 +19,7 @@ module K16Cpu(clk, reset, hold, busy,
   localparam SP = 6; // SP in register 6
   localparam PC = 7; // PC in register 7
 
-  // Current instruction
-  reg [15:0] instruction;
+  reg [2:0] destinationRegister;
 
   // Flags
   reg carry;
@@ -38,10 +37,14 @@ module K16Cpu(clk, reset, hold, busy,
   localparam WAIT_INSTR = 2;
   localparam DECODE_INSTR = 3;
   localparam STORE_RESULT = 4;
-  localparam JUMP = 4;
-  localparam WAIT_READ_MEM = 6;
-  localparam WAIT_WRITE_MEM = 7;
-  localparam WAIT_WRITE_RETURN_ADDRESS = 8;
+  localparam STORE_RESULT_AND_CARRY = 5;
+  localparam STORE_FLAGS = 6;
+  localparam JUMP = 7;
+  localparam LOAD_MEM = 8;
+  localparam WAIT_READ_MEM = 9;
+  localparam STORE_READ_MEM = 10;
+  localparam WAIT_WRITE_MEM = 11;
+  localparam WAIT_WRITE_RETURN_ADDRESS = 12;
 
   reg [15:0] operand1;
   reg [15:0] operand2;
@@ -64,8 +67,7 @@ module K16Cpu(clk, reset, hold, busy,
     .result(result),
     .carryOut(carryOut),
     .zeroOut(zeroOut),
-    .negativeOut(negativeOut)
-    );
+    .negativeOut(negativeOut));
 
   always @(posedge clk)
     if (reset)
@@ -82,6 +84,9 @@ module K16Cpu(clk, reset, hold, busy,
              $display("RESET");
              register[PC] <= 16'h0000;
              write <= 0;
+             carry <= 0;
+             zero <= 0;
+             negative <= 0;
              state <= FETCH_INSTR;
            end
          FETCH_INSTR:
@@ -106,24 +111,40 @@ module K16Cpu(clk, reset, hold, busy,
            begin
               $display("DECODE_INSTR address=%04X", address);
               casez (data_in)
-                16'b000?????????0???:
+                16'b000?????????00??:
                   begin
-                    $display("DECODE_INSTR - ADD");
+                    $display("DECODE_INSTR - ADD (0), ADC (1), SUB (2), SBC (3)");
                     // ADD (0), ADC (1), SUB (2), SBC (3), AND (4), OR (5), XOR (6), NOT (7)
                     operation <= data_in[2:0];
                     operand1 <= register[data_in[9:7]];
                     operand2 <= register[data_in[6:4]];
+                    destinationRegister <= data_in[12:10];
+                    enableAlu <= 1;
+                    enableShift <= 0;
+                    enableLoad <= 0;
+                    state <= STORE_RESULT_AND_CARRY;
+                    $display("  operation=%03B,operand1=%03B,operand2=%03B,dest=%03B",data_in[2:0],data_in[9:7],data_in[6:4],data_in[12:10]);
+                  end
+                16'b000?????????01??:
+                  begin
+                    $display("DECODE_INSTR - AND (4), OR (5), XOR (6), NOT (7)");
+                    // ADD (0), ADC (1), SUB (2), SBC (3), AND (4), OR (5), XOR (6), NOT (7)
+                    operation <= data_in[2:0];
+                    operand1 <= register[data_in[9:7]];
+                    operand2 <= register[data_in[6:4]];
+                    destinationRegister <= data_in[12:10];
                     enableAlu <= 1;
                     enableShift <= 0;
                     enableLoad <= 0;
                     state <= STORE_RESULT;
-                    $display("operation=%03B,operand1=%03B,operand2=%03B,dest=%03B",data_in[2:0],data_in[9:7],data_in[6:4],data_in[12:10]);
+                    $display("   operation=%03B,operand1=%03B,operand2=%03B,dest=%03B",data_in[2:0],data_in[9:7],data_in[6:4],data_in[12:10]);
                   end
                 16'b000?????????10??:
                   begin
-                    // LD (0), LDL (1), LDH (2), SWP (3)
+                    $display("DECODE_INSTR - LD (0), LDL (1), LDH (2), SWP (3)");
                     operation <= {1'b0, data_in[1:0]};
                     operand1 <= register[data_in[9:7]];
+                    destinationRegister <= data_in[12:10];
                     enableAlu <= 0;
                     enableShift <= 0;
                     enableLoad <= 1;
@@ -131,10 +152,11 @@ module K16Cpu(clk, reset, hold, busy,
                   end
                 16'b000?????????1100:
                   begin
-                    // INC
+                    $display("DECODE_INSTR - INC");
                     operation <= 3'b000;
                     operand1 <= register[data_in[9:7]];
                     operand2 <= 16'h0001;
+                    destinationRegister <= data_in[12:10];
                     enableAlu <= 1;
                     enableShift <= 0;
                     enableLoad <= 0;
@@ -142,35 +164,37 @@ module K16Cpu(clk, reset, hold, busy,
                   end
                 16'b000?????????1110:
                   begin
-                    // DEC
-                    operation <= 3'b010;
-                    operand1 <= register[data_in[9:7]];
-                    operand2 <= 16'h0001;
-                    enableAlu <= 1;
-                    enableShift <= 0;
-                    enableLoad <= 0;
-                    state <= STORE_RESULT;
-                  end
-                16'b000?????????1111:
-                  begin
-                    // CMP
+                    $display("DECODE_INSTR - CMP");
                     operation <= 3'b010;
                     operand1 <= register[data_in[9:7]];
                     operand2 <= register[data_in[6:4]];
                     enableAlu <= 1;
                     enableShift <= 0;
                     enableLoad <= 0;
+                    state <= STORE_FLAGS;
+                  end
+                16'b000?????????1111:
+                  begin
+                    $display("DECODE_INSTR - DEC");
+                    operation <= 3'b010;
+                    operand1 <= register[data_in[9:7]];
+                    operand2 <= 16'h0001;
+                    destinationRegister <= data_in[12:10];
+                    enableAlu <= 1;
+                    enableShift <= 0;
+                    enableLoad <= 0;
+                    state <= STORE_RESULT;
                   end
                 16'b001?????????0???:
                   begin
-                    // SHR (0), ASHL/SHL (1), ASHR (2), ROR (3), ROL(4)
+                    $display("DECODE_INSTR - SHR (0), ASHL/SHL (1), ASHR (2), ROR (3), ROL(4)");
                     operation <= {data_in[2:0]};
                     operand1 <= register[data_in[9:7]];
-                    register[data_in[12:10]] <= result;
+                    destinationRegister <= data_in[12:10];
                     enableAlu <= 0;
                     enableShift <= 1;
                     enableLoad <= 0;
-                    state <= STORE_RESULT;
+                    state <= STORE_RESULT_AND_CARRY;
                   end
                 16'b001?????????10??:
                   begin
@@ -182,42 +206,101 @@ module K16Cpu(clk, reset, hold, busy,
                     enableLoad <= 0;
                     state <= STORE_RESULT;
                   end
-                16'b011?????????????:
-                  // Load from immediate
+                16'b010?????????????:
                   begin
-                  $display("DECODE_INSTR - LD Immediate");
-                  operation <= {1'b1, data_in[9:8]};
-                  operand1 <= data_in[7:0];
-                  enableAlu <= 0;
-                  enableShift <= 0;
-                  enableLoad <= 1;
-                  state <= STORE_RESULT;
-                  $display("operation=%03B,operand1=%02X,dest=%03B",operation,operand1,data_in[12:10]);
+                    $display("DECODE_INSTR - BCS (0), BCC (1), BZS (2) BZC (3), BNS (4), BNC (5), BOS (6), BOC (7)");
+                    if ((data_in[12:10] == 3'b000 && carry == 1'b1) ||
+                        (data_in[12:10] == 3'b001 && carry == 1'b0) ||
+                        (data_in[12:10] == 3'b010 && zero == 1'b1) ||
+                        (data_in[12:10] == 3'b011 && zero == 1'b0) ||
+                        (data_in[12:10] == 3'b100 && negative == 1'b1) ||
+                        (data_in[12:10] == 3'b101 && negative == 1'b0))
+                      begin
+                        operation <= 3'b000;
+                        operand1 <= register[data_in[9:7]];
+                        operand2 <= {data_in[6], data_in[6], data_in[6], data_in[6], data_in[6], data_in[6], data_in[6], data_in[6], data_in[6], data_in[6:0]};;
+                        enableAlu <= 1;
+                        enableShift <= 0;
+                        enableLoad <= 0;
+                        state <= JUMP;
+                      end
+                    else
+                      begin
+                        state <= FETCH_INSTR;
+                      end
+                  end
+                16'b011?????????????:
+                  begin
+                     $display("DECODE_INSTR - LDL imm8 (0), LDH imm8 (1), LDLZ imm8 (2), LDHZ imm8 (3)");
+                     operation <= {1'b1, data_in[9:8]};
+                     operand1 <= data_in[7:0];
+                     destinationRegister <= data_in[12:10];
+                     enableAlu <= 0;
+                     enableShift <= 0;
+                     enableLoad <= 1;
+                     state <= STORE_RESULT;
+                  $display("   operation=%03B,operand1=%02X,dest=%03B",operation,operand1,data_in[12:10]);
                   end
                 16'b100?????????????:
-                  // JMP, HLT
                   begin
-                  $display("DECODE_INSTR - Jump");
-                  operation <= 0;
-                  operand1 <= register[data_in[12:10]];
-                  operand2 <= {data_in[9], data_in[9], data_in[9], data_in[9], data_in[9], data_in[9], data_in[9:0]};
-                  enableAlu <= 1;
-                  enableShift <= 0;
-                  enableLoad <= 0;
-                  state <= JUMP;
-                  $display("operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{data_in[9], data_in[9], data_in[9], data_in[9], data_in[9], data_in[9], data_in[9:0]});
+                    $display("DECODE_INSTR - JMP, HLT");
+                    operation <= 0;
+                    operand1 <= register[data_in[12:10]];
+                    operand2 <= {data_in[9], data_in[9], data_in[9], data_in[9], data_in[9], data_in[9], data_in[9:0]};
+                    enableAlu <= 1;
+                    enableShift <= 0;
+                    enableLoad <= 0;
+                    state <= JUMP;
+                    $display("   operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{data_in[9], data_in[9], data_in[9], data_in[9], data_in[9], data_in[9], data_in[9:0]});
+                  end
+                16'b110?????????????:
+                  begin
+                    $display("DECODE_INSTR - LD [MEM]");
+                    operation <= 0;
+                    operand1 <= register[data_in[9:7]];
+                    operand2 <= {data_in[6], data_in[6], data_in[6], data_in[6], data_in[6], data_in[6], data_in[6], data_in[6], data_in[6], data_in[6:0]};
+                    destinationRegister <= data_in[12:10];
+                    enableAlu <= 1;
+                    enableShift <= 0;
+                    enableLoad <= 0;
+                    state <= LOAD_MEM;
+                    $display("   operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{data_in[6], data_in[6], data_in[6], data_in[6], data_in[6], data_in[6], data_in[6], data_in[6], data_in[6], data_in[6:0]});
                   end
               endcase
-              instruction <= data_in;
            end
          STORE_RESULT:
            begin
-              $display("STORE_RESULT R%d = %04X",data_in[12:10], result);
-              register[data_in[12:10]] <= result;
+              $display("STORE_RESULT R%d = %04X", destinationRegister, result);
+              register[destinationRegister] <= result;
+              zero = zeroOut;
+              negative = negativeOut;
               enableAlu <= 0;
               enableShift <= 0;
               enableLoad <= 0;
               state <= FETCH_INSTR;
+           end
+         STORE_RESULT_AND_CARRY:
+           begin
+             $display("STORE_RESULT_AND_CARRY R%d = %04X", destinationRegister, result);
+             register[destinationRegister] <= result;
+             carry = carryOut;
+             zero = zeroOut;
+             negative = negativeOut;
+             enableAlu <= 0;
+             enableShift <= 0;
+             enableLoad <= 0;
+             state <= FETCH_INSTR;
+           end
+         STORE_FLAGS:
+           begin
+             $display("STORE_FLAGS");
+             carry = carryOut;
+             zero = zeroOut;
+             negative = negativeOut;
+             enableAlu <= 0;
+             enableShift <= 0;
+             enableLoad <= 0;
+             state <= FETCH_INSTR;
            end
          JUMP:
            begin
@@ -225,8 +308,27 @@ module K16Cpu(clk, reset, hold, busy,
              register[PC] <= result;
              state <= FETCH_INSTR;
            end
+         LOAD_MEM:
+           begin
+             $display("LOAD_MEM");
+             address <= result;
+             state <= WAIT_READ_MEM;
+           end
+         WAIT_READ_MEM:
+           begin
+             $display("WAIT_READ_MEM");
+             state <= STORE_READ_MEM;
+           end
+         STORE_READ_MEM:
+           begin
+             $display("STORE_READ_MEM");
+             register[destinationRegister] <= data_in;
+             zero <= data_in == 16'hFFFF ? 1'b1 : 1'b0;
+             negative <= data_in[15] == 1'b1 ? 1'b1 : 1'b0;
+             state <= FETCH_INSTR;
+           end
        endcase
-       $display("State=%02X,R0=%04X,R1=%04X,R2=%04X,R3=%04X,R4=%04X,R5=%04X,R6=%04X,R7=%04X,Address=%04x,data_in=%04X",state,register[0],register[1],register[2],register[3],register[4],register[5],register[6],register[7],address,data_in);
+       $display("   State=%02X,R0=%04X,R1=%04X,R2=%04X,R3=%04X,R4=%04X,R5=%04X,R6=%04X,R7=%04X,C=%B,Z=%B,N=%B,Address=%04x,data_in=%04X",state,register[0],register[1],register[2],register[3],register[4],register[5],register[6],register[7],carry,zero,negative,address,data_in);
     end
 endmodule
 `endif

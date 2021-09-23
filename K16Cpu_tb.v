@@ -37,11 +37,23 @@ K16Cpu cpu(
 
 initial begin
 
-  ram[0] = 16'h6257;
-  ram[1] = 16'h0480;
-  ram[2] = 16'h9FFF;
+  ram[0]  = 16'hC38B;
+  ram[1]  = 16'hCB8B;
+  ram[2]  = 16'h6600;
+  ram[3]  = 16'h6E10;
+  ram[4]  = 16'h2900;
+  ram[5]  = 16'h4781;
+  ram[6]  = 16'h0480;
+  ram[7]  = 16'h2480;
+  ram[8]  = 16'h2903;
+  ram[9]  = 16'h0D8F;
+  ram[10] = 16'h4FFA;
+  ram[11] = 16'h9FFF;
 
-  $monitor("clk=%b,reset=%b,hold=%b,busy=%b,address=%04X,data_in=%04X,data_out=%04X,write=%b",clk,reset,hold,busy,address,data_in,data_out,write);
+  ram[12] = 16'h002A;
+  ram[13] = 16'h00F3;
+
+  $monitor("...clk=%b,reset=%b,hold=%b,busy=%b,address=%04X,data_in=%04X,data_out=%04X,write=%b",clk,reset,hold,busy,address,data_in,data_out,write);
 
   // initialize testbench variables
   clk = 1;
@@ -51,7 +63,7 @@ initial begin
   clk = 0;
   reset = 0;
 
-  repeat (20) @(posedge clk);
+  repeat (400) @(posedge clk);
   $finish;
 
 end
