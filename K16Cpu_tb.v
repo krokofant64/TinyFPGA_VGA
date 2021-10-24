@@ -9,7 +9,7 @@ reg         reset;
 wire        hold;
 wire        busy;
 wire [15:0] address;
-reg [15:0] data_in;
+reg [15:0]  data_in;
 wire [15:0] data_out;
 wire        write;
 

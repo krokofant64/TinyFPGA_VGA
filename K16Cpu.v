@@ -42,14 +42,14 @@ module K16Cpu(clk, reset, hold, busy,
   localparam STORE_RESULT_AND_CARRY = 5;
   localparam STORE_FLAGS = 6;
   localparam JUMP = 7;
-  localparam LOAD_MEM = 8;
+  localparam LD_CALC_MEM_ADDR = 8;
   localparam WAIT_READ_MEM = 9;
   localparam STORE_READ_MEM = 10;
-  localparam WRITE_MEM = 11;
+  localparam STO_CALC_MEM_ADDR = 11;
   localparam WAIT_WRITE_MEM = 12;
-  localparam WAIT_PUSH_MEM = 13;
-  localparam WAIT_POP_ADDRESS = 14;
-  localparam WAIT_JSR_MEM = 15;
+  localparam PSH_WAIT_WRITE_STACK = 13;
+  localparam POP_CALCULATE_SP = 14;
+  localparam JSR_WAIT_WRITE_STACK = 15;
 
   reg [15:0]  operand1;
   reg [15:0]  operand2;
@@ -206,7 +206,7 @@ module K16Cpu(clk, reset, hold, busy,
                     destinationRegister <= SP;
                     data_out <= register[data_in[12:10]];
                     write <= 1;
-                    state <= WAIT_PUSH_MEM;
+                    state <= PSH_WAIT_WRITE_STACK;
                   end
                   16'b001?????????1101:
                     begin
@@ -216,7 +216,7 @@ module K16Cpu(clk, reset, hold, busy,
                       operand1 <= register[SP];
                       operand2 <= 16'h0001;
                       destinationRegister <= data_in[12:10];
-                      state <= WAIT_POP_ADDRESS;
+                      state <= POP_CALCULATE_SP;
                     end
                 16'b010?????????????:
                   begin
@@ -270,7 +270,7 @@ module K16Cpu(clk, reset, hold, busy,
                     destinationRegister <= SP;
                     data_out <= register[PC];
                     write <= 1;
-                    state <= WAIT_JSR_MEM;
+                    state <= JSR_WAIT_WRITE_STACK;
                     $display("   operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{{6{data_in[9]}}, data_in[9:0]});
                   end
                 16'b110?????????????:
@@ -281,7 +281,7 @@ module K16Cpu(clk, reset, hold, busy,
                     operand1 <= register[data_in[9:7]];
                     operand2 <= {{9{data_in[6]}}, data_in[6:0]};
                     destinationRegister <= data_in[12:10];
-                    state <= LOAD_MEM;
+                    state <= LD_CALC_MEM_ADDR;
                     $display("   operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{{9{data_in[6]}}, data_in[6:0]});
                   end
                 16'b111?????????????:
@@ -292,7 +292,7 @@ module K16Cpu(clk, reset, hold, busy,
                     operand1 <= register[data_in[9:7]];
                     operand2 <= {{9{data_in[6]}}, data_in[6:0]};
                     destinationRegister <= data_in[12:10];
-                    state <= WRITE_MEM;
+                    state <= STO_CALC_MEM_ADDR;
                     $display("   operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{{9{data_in[6]}}, data_in[6:0]});
                   end
               endcase
@@ -328,9 +328,9 @@ module K16Cpu(clk, reset, hold, busy,
              register[PC] <= result;
              state <= FETCH_INSTR;
            end
-         LOAD_MEM:
+         LD_CALC_MEM_ADDR:
            begin
-             $display("LOAD_MEM");
+             $display("LD_CALC_MEM_ADDR");
              address <= result;
              state <= WAIT_READ_MEM;
            end
@@ -347,9 +347,9 @@ module K16Cpu(clk, reset, hold, busy,
              negative <= data_in[15] == 1'b1 ? 1'b1 : 1'b0;
              state <= FETCH_INSTR;
            end
-         WRITE_MEM:
+         STO_CALC_MEM_ADDR:
            begin
-             $display("WRITE_MEM");
+             $display("STO_CALC_MEM_ADDR");
              address <= result;
              data_out <= register[destinationRegister];
              write <= 1;
@@ -360,23 +360,23 @@ module K16Cpu(clk, reset, hold, busy,
             $display("WAIT_WRITE_MEM");
             state <= FETCH_INSTR;
           end
-        WAIT_PUSH_MEM:
+        PSH_WAIT_WRITE_STACK:
           begin
-            $display("WAIT_PUSH_MEM");
+            $display("PSH_WAIT_WRITE_STACK");
             write <= 0;
             register[destinationRegister] <= result;
             state <= FETCH_INSTR;
           end
-        WAIT_POP_ADDRESS:
+        POP_CALCULATE_SP:
           begin
-             $display("WAIT_POP_ADDRESS");
+             $display("POP_CALCULATE_SP");
              address <= result;
              register[SP] <= result;
              state <= WAIT_READ_MEM;
           end
-        WAIT_JSR_MEM:
+        JSR_WAIT_WRITE_STACK:
           begin
-            $display("WAIT_JSR_MEM");
+            $display("JSR_WAIT_WRITE_STACK");
             write <= 0;
             register[destinationRegister] <= result;
             operationType = `ALU_OP;

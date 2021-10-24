@@ -50,7 +50,7 @@ module pong(clk_16, vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B, quadA, quadB, U
   wire [3:0] spriteLine;
   wire [63:0] spriteBits;
 
-  spriteBitmap bitmap(.line(spriteLine),
+  SpriteBitmap bitmap(.line(spriteLine),
                       .bits(spriteBits));
 
   // convert player X/Y to 9 bits and compare to CRT hpos/vpos
@@ -81,9 +81,6 @@ module pong(clk_16, vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B, quadA, quadB, U
   wire zeroOut;
   wire negativeOut;
   wire [15:0] result;
-  reg enableAlu = 1'b1;
-  reg enableShift = 1'b0;
-  reg enableLoad = 1'b0;
   Alu alu1(.operand1(register[1]),
            .operand2(register[2]),
            .carryIn(carry),
@@ -96,7 +93,7 @@ module pong(clk_16, vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B, quadA, quadB, U
 
   always @(posedge vga_v_sync)
   begin
-    register[0]++;
+    register[0] = register[0] + 1;
     register[1] = register[1] + 2;
     register[2] = register[2] + 3;
     register[3] = register[3] + 4;
@@ -111,7 +108,7 @@ module pong(clk_16, vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B, quadA, quadB, U
   wire [4:0] column = hpos[6:2];
   wire [2:0] line = vpos[4:2];
 
-  registerToPixel r1(.register(register[vpos[7:5]]),
+  RegisterToPixel r1(.register(register[vpos[7:5]]),
                      .line(line),
                      .column(column),
                      .pixel(pixel));
@@ -128,7 +125,7 @@ module pong(clk_16, vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B, quadA, quadB, U
   always @(posedge clk)
   begin
   	vga_R <= r;
-  	vga_G <= g;
+  	vga_G <= g ^ pixel;
   	vga_B <= b;
   end
 
