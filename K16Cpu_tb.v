@@ -12,6 +12,10 @@ wire [15:0] address;
 reg [15:0]  data_in;
 wire [15:0] data_out;
 wire        write;
+reg [15:0]  cpuInput1;
+reg [15:0]  cpuInput0;
+wire [15:0] cpuOutput0;
+wire [15:0] cpuOutput1;
 
 always #1 clk = ~clk;
 
@@ -23,7 +27,11 @@ K16Cpu cpu(
   .address(address),
   .data_in(data_in),
   .data_out(data_out),
-  .write(write));
+  .write(write),
+  .cpuInput1(cpuInput1),
+  .cpuInput0(cpuInput0),
+  .cpuOutput0(cpuOutput0),
+  .cpuOutput1(cpuOutput1));
 
   reg [15:0] ram[0:65535];
 
@@ -71,18 +79,60 @@ ram[8] = 16'h000A;
 ram[9] = 16'h000D;
 
 
-  $monitor("...clk=%b,reset=%b,hold=%b,busy=%b,address=%04X,data_in=%04X,data_out=%04X,write=%b,ram[9]=%04X,ram[10]=%04X,ram[16]=%04X",clk,reset,hold,busy,address,data_in,data_out,write,ram[9],ram[10],ram[16]);
+  $monitor("...clk=%b,reset=%b,hold=%b,busy=%b,address=%04X,data_in=%04X,data_out=%04X,write=%b,cpuOutput0=%04X,cpuOutput1=%04X",clk,reset,hold,busy,address,data_in,data_out,write,cpuOutput0,cpuOutput1);
 
   // initialize testbench variables
   clk = 1;
   reset = 1;
 
   #1
+  cpuInput1[`START] = 0;
   clk = 0;
   reset = 0;
+  $display("Start");
+  repeat (5) @(posedge clk);
+  cpuInput1[`INST_STEP] = 1;
+  repeat (5) @(posedge clk);
+  cpuInput1[`INST_STEP] = 0;
+  repeat (5) @(posedge clk);
 
+  cpuInput1[`INST_STEP] = 1;
+  repeat (5) @(posedge clk);
+  cpuInput1[`INST_STEP] = 0;
+  repeat (5) @(posedge clk);
+  cpuInput1[`CONTINUE] = 1;
+
+  #10
   repeat (50) @(posedge clk);
-  $finish;
+  cpuInput1[`CONTINUE] = 0;
+  cpuInput1[`STOP] = 1;
+  repeat (5) @(posedge clk);
+  cpuInput1[`STOP] = 0;
+  cpuInput0 = 16'h0000;
+  // cpuInput1[`START] = 1;
+  // repeat (5) @(posedge clk);
+  // cpuInput1[`START] = 0;
+
+  cpuInput1[`EXAMINE] = 1;
+  repeat (5) @(posedge clk);
+  cpuInput1[`EXAMINE] = 0;
+  repeat (5) @(posedge clk);
+  cpuInput1[`EXAMINE_NEXT] = 1;
+  repeat (5) @(posedge clk);
+  cpuInput1[`EXAMINE_NEXT] = 0;
+  repeat (5) @(posedge clk);
+
+  cpuInput0 = 16'h0010;
+  cpuInput1[`EXAMINE] = 1;
+  repeat (5) @(posedge clk);
+  cpuInput1[`EXAMINE] = 0;
+  cpuInput0 = 16'h1234;
+  cpuInput1[`DEPOSIT] = 1;
+  repeat (5) @(posedge clk);
+  cpuInput1[`DEPOSIT] = 0;
+  $display("RAM[0x0010]==%04X", ram[16'h0010]);
+
+//  $finish;
 
 end
 endmodule

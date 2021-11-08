@@ -3,8 +3,22 @@
 
 `include "alu.v"
 
+//
+`define START             0
+`define STOP              1
+`define CONTINUE          2
+`define RESET             3
+`define INST_STEP         4
+`define EXAMINE           5
+`define EXAMINE_NEXT      6
+`define EXAMINE_REGISTER  7
+`define DEPOSIT           8
+`define DEPOSIT_NEXT      9
+`define DEPOSIT_REGISTER 10
+
+
 module K16Cpu(clk, reset, hold, busy,
-             address, data_in, data_out, write);
+             address, data_in, data_out, write, cpuInput1, cpuInput0, cpuOutput0, cpuOutput1);
 
   input              clk;
   input              reset;
@@ -14,6 +28,10 @@ module K16Cpu(clk, reset, hold, busy,
   input  [15:0]      data_in;
   output reg [15:0]  data_out;
   output reg         write;
+  input  [15:0]      cpuInput1;
+  input  [15:0]      cpuInput0;
+  output reg [15:0]  cpuOutput0;
+  output reg [15:0]  cpuOutput1;
 
   // 8 16-bit registers
   reg [15:0] register[0:7];
@@ -51,11 +69,22 @@ module K16Cpu(clk, reset, hold, busy,
   localparam POP_CALCULATE_SP = 14;
   localparam JSR_WAIT_WRITE_STACK = 15;
 
+  localparam STOPPED = 16;
+  localparam EXAMINE_WAIT_NEXT = 17;
+  localparam EXAMINE_WAIT_READ_MEM = 18;
+  localparam EXAMINE_SHOW_READ_MEM = 19;
+  localparam DEPOSIT_WAIT_NEXT = 20;
+  localparam DEPOSIT_WAIT_WRITE_MEM = 21;
+  localparam EXAMINE_WAIT_READ_REGISTER = 22;
+  localparam DEPOSIT_WAIT_WRITE_REGISTER = 23;
+
+
   reg [15:0]  operand1;
   reg [15:0]  operand2;
   wire [15:0] result;
   reg [2:0]   operation;
   reg [2:0]   operationType;
+  reg         running;
   wire        carryOut;
   wire        zeroOut;
   wire        negativeOut;
@@ -70,12 +99,48 @@ module K16Cpu(clk, reset, hold, busy,
     .zeroOut(zeroOut),
     .negativeOut(negativeOut));
 
+  reg [10:0] buttonState;
+
+  always @(posedge cpuInput1[`STOP])
+    begin
+      running <= 0;
+    end
+  always @(posedge cpuInput1[`START])
+    begin
+      buttonState[`START] <= 1;
+    end
+  always @(posedge cpuInput1[`CONTINUE])
+    begin
+      buttonState[`CONTINUE] <= 1;
+    end
+  always @(posedge cpuInput1[`INST_STEP])
+    begin
+      buttonState[`INST_STEP] <= 1;
+    end
+  always @(posedge cpuInput1[`EXAMINE])
+    begin
+      buttonState[`EXAMINE] <= 1;
+    end
+  always @(posedge cpuInput1[`EXAMINE_NEXT])
+    begin
+      buttonState[`EXAMINE_NEXT] <= 1;
+    end
+  always @(posedge cpuInput1[`DEPOSIT])
+    begin
+      buttonState[`DEPOSIT] <= 1;
+    end
+  always @(posedge cpuInput1[`DEPOSIT_NEXT])
+    begin
+      buttonState[`DEPOSIT_NEXT] <= 1;
+    end
+
   always @(posedge clk)
     if (reset)
     begin
       $display("Reset");
       state <= RESET;
       busy <= 1;
+      running <= 0;
     end
     else
     begin
@@ -93,13 +158,18 @@ module K16Cpu(clk, reset, hold, busy,
          FETCH_INSTR:
            begin
              $display("FETCH_INSTR");
-             write <= 0;
-             address <= register[PC];
-             operationType <= `ALU_OP;
-             operation <= `ADD_OP;
-             operand1 <= register[PC];
-             operand2 <= 1;
-             state <= WAIT_INSTR;
+             if (running)
+               begin
+                 write <= 0;
+                 address <= register[PC];
+                 operationType <= `ALU_OP;
+                 operation <= `ADD_OP;
+                 operand1 <= register[PC];
+                 operand2 <= 1;
+                 state <= WAIT_INSTR;
+               end
+             else
+               state <= STOPPED;
            end
          WAIT_INSTR:
            begin
@@ -115,7 +185,7 @@ module K16Cpu(clk, reset, hold, busy,
                   begin
                     $display("DECODE_INSTR - ADD (0), ADC (1), SUB (2), SBC (3)");
                     // ADD (0), ADC (1), SUB (2), SBC (3), AND (4), OR (5), XOR (6), NOT (7)
-                    operationType = `ALU_OP;
+                    operationType <= `ALU_OP;
                     operation <= data_in[2:0];
                     operand1 <= register[data_in[9:7]];
                     operand2 <= register[data_in[6:4]];
@@ -127,7 +197,7 @@ module K16Cpu(clk, reset, hold, busy,
                   begin
                     $display("DECODE_INSTR - AND (4), OR (5), XOR (6), NOT (7)");
                     // ADD (0), ADC (1), SUB (2), SBC (3), AND (4), OR (5), XOR (6), NOT (7)
-                    operationType = `ALU_OP;
+                    operationType <= `ALU_OP;
                     operation <= data_in[2:0];
                     operand1 <= register[data_in[9:7]];
                     operand2 <= register[data_in[6:4]];
@@ -138,7 +208,7 @@ module K16Cpu(clk, reset, hold, busy,
                 16'b000?????????10??:
                   begin
                     $display("DECODE_INSTR - LD (0), LDL (1), LDH (2), SWP (3)");
-                    operationType = `LOAD_OP;
+                    operationType <= `LOAD_OP;
                     operation <= {1'b0, data_in[1:0]};
                     operand1 <= register[data_in[9:7]];
                     destinationRegister <= data_in[12:10];
@@ -147,7 +217,7 @@ module K16Cpu(clk, reset, hold, busy,
                 16'b000?????????1100:
                   begin
                     $display("DECODE_INSTR - INC");
-                    operationType = `ALU_OP;
+                    operationType <= `ALU_OP;
                     operation <= `ADD_OP;
                     operand1 <= register[data_in[9:7]];
                     operand2 <= 16'h0001;
@@ -157,7 +227,7 @@ module K16Cpu(clk, reset, hold, busy,
                 16'b000?????????1110:
                   begin
                     $display("DECODE_INSTR - CMP");
-                    operationType = `ALU_OP;
+                    operationType <= `ALU_OP;
                     operation <= `SUB_OP;
                     operand1 <= register[data_in[9:7]];
                     operand2 <= register[data_in[6:4]];
@@ -166,7 +236,7 @@ module K16Cpu(clk, reset, hold, busy,
                 16'b000?????????1111:
                   begin
                     $display("DECODE_INSTR - DEC");
-                    operationType = `ALU_OP;
+                    operationType <= `ALU_OP;
                     operation <= `SUB_OP;
                     operand1 <= register[data_in[9:7]];
                     operand2 <= 16'h0001;
@@ -176,7 +246,7 @@ module K16Cpu(clk, reset, hold, busy,
                 16'b001?????????0???:
                   begin
                     $display("DECODE_INSTR - SHR (0), ASHL/SHL (1), ASHR (2), ROR (3), ROL(4)");
-                    operationType = `SHIFT_OP;
+                    operationType <= `SHIFT_OP;
                     operation <= {data_in[2:0]};
                     operand1 <= register[data_in[9:7]];
                     destinationRegister <= data_in[12:10];
@@ -199,7 +269,7 @@ module K16Cpu(clk, reset, hold, busy,
                   begin
                     $display("DECODE_INSTR -  PSH");
                     address <= register[SP];
-                    operationType = `ALU_OP;
+                    operationType <= `ALU_OP;
                     operation <= `SUB_OP;
                     operand1 <= register[SP];
                     operand2 <= 16'h0001;
@@ -211,7 +281,7 @@ module K16Cpu(clk, reset, hold, busy,
                   16'b001?????????1101:
                     begin
                       $display("DECODE_INSTR -  POP");
-                      operationType = `ALU_OP;
+                      operationType <= `ALU_OP;
                       operation <= `ADD_OP;
                       operand1 <= register[SP];
                       operand2 <= 16'h0001;
@@ -228,7 +298,7 @@ module K16Cpu(clk, reset, hold, busy,
                         (data_in[12:10] == 3'b100 && negative == 1'b1) ||
                         (data_in[12:10] == 3'b101 && negative == 1'b0))
                       begin
-                        operationType = `ALU_OP;
+                        operationType <= `ALU_OP;
                         operation <= `ADD_OP;
                         operand1 <= register[data_in[9:7]];
                         operand2 <= {{9{data_in[6]}}, data_in[6:0]};;
@@ -242,7 +312,7 @@ module K16Cpu(clk, reset, hold, busy,
                 16'b011?????????????:
                   begin
                      $display("DECODE_INSTR - LDL imm8 (0), LDH imm8 (1), LDLZ imm8 (2), LDHZ imm8 (3)");
-                     operationType = `LOAD_OP;
+                     operationType <= `LOAD_OP;
                      operation <= {1'b1, data_in[9:8]};
                      operand1 <= data_in[7:0];
                      destinationRegister <= data_in[12:10];
@@ -252,7 +322,7 @@ module K16Cpu(clk, reset, hold, busy,
                 16'b100?????????????:
                   begin
                     $display("DECODE_INSTR - JMP, HLT");
-                    operationType = `ALU_OP;
+                    operationType <= `ALU_OP;
                     operation <= `ADD_OP;
                     operand1 <= register[data_in[12:10]];
                     operand2 <= {{6{data_in[9]}}, data_in[9:0]};
@@ -263,7 +333,7 @@ module K16Cpu(clk, reset, hold, busy,
                   begin
                     $display("DECODE_INSTR - JSR");
                     address <= register[SP];
-                    operationType = `ALU_OP;
+                    operationType <= `ALU_OP;
                     operation <= `SUB_OP;
                     operand1 <= register[SP];
                     operand2 <= 16'h0001;
@@ -276,7 +346,7 @@ module K16Cpu(clk, reset, hold, busy,
                 16'b110?????????????:
                   begin
                     $display("DECODE_INSTR - LD [MEM]");
-                    operationType = `ALU_OP;
+                    operationType <= `ALU_OP;
                     operation <= `ADD_OP;
                     operand1 <= register[data_in[9:7]];
                     operand2 <= {{9{data_in[6]}}, data_in[6:0]};
@@ -287,7 +357,7 @@ module K16Cpu(clk, reset, hold, busy,
                 16'b111?????????????:
                   begin
                     $display("DECODE_INSTR - STO");
-                    operationType = `ALU_OP;
+                    operationType <= `ALU_OP;
                     operation <= `ADD_OP;
                     operand1 <= register[data_in[9:7]];
                     operand2 <= {{9{data_in[6]}}, data_in[6:0]};
@@ -379,14 +449,135 @@ module K16Cpu(clk, reset, hold, busy,
             $display("JSR_WAIT_WRITE_STACK");
             write <= 0;
             register[destinationRegister] <= result;
-            operationType = `ALU_OP;
+            operationType <= `ALU_OP;
             operation <= `ADD_OP;
             operand1 <= register[data_in[12:10]];
             operand2 <= {{6{data_in[9]}}, data_in[9:0]};
             state <= JUMP;
           end
-       endcase
-       $display("   State=%02X,R0=%04X,R1=%04X,R2=%04X,R3=%04X,R4=%04X,R5=%04X,R6=%04X,R7=%04X,C=%B,Z=%B,N=%B,Address=%04x,data_in=%04X",state,register[0],register[1],register[2],register[3],register[4],register[5],register[6],register[7],carry,zero,negative,address,data_in);
+        STOPPED:
+          begin
+            $display("STOPPED");
+            if (buttonState[`CONTINUE] == 1)
+              begin
+                buttonState[`CONTINUE] <= 0;
+                running <= 1;
+                write <= 0;
+                address <= register[PC];
+                operationType <= `ALU_OP;
+                operation <= `ADD_OP;
+                operand1 <= register[PC];
+                operand2 <= 1;
+                state <= WAIT_INSTR;
+              end
+            else
+            if (buttonState[`START] == 1)
+              begin
+                buttonState[`START] <= 0;
+                running <= 1;
+                write <= 0;
+                register[PC] <= cpuInput0;
+                address <= cpuInput0;
+                operationType <= `ALU_OP;
+                operation <= `ADD_OP;
+                operand1 <= cpuInput0;
+                operand2 <= 1;
+                state <= WAIT_INSTR;
+              end
+            else
+            if (buttonState[`INST_STEP] == 1)
+              begin
+                buttonState[`INST_STEP] <= 0;
+                write <= 0;
+                address <= register[PC];
+                operationType <= `ALU_OP;
+                operation <= `ADD_OP;
+                operand1 <= register[PC];
+                operand2 <= 1;
+                state <= WAIT_INSTR;
+              end
+            else
+            if (buttonState[`EXAMINE] == 1)
+              begin
+                buttonState[`EXAMINE] <= 0;
+                write <= 0;
+                register[PC] <= cpuInput0;
+                address <= cpuInput0;
+                cpuOutput0 = cpuInput0;
+                state <= EXAMINE_WAIT_READ_MEM;
+              end
+            else
+            if (buttonState[`EXAMINE_NEXT] == 1)
+              begin
+                buttonState[`EXAMINE_NEXT] <= 0;
+                write <= 0;
+                operationType <= `ALU_OP;
+                operation <= `ADD_OP;
+                operand1 <= register[PC];
+                operand2 <= 1;
+                state <= EXAMINE_WAIT_NEXT;
+              end
+            else
+            if (buttonState[`DEPOSIT] == 1)
+              begin
+                buttonState[`DEPOSIT] <= 0;
+                write <= 1;
+                address <= register[PC];
+                cpuOutput0 = register[PC];
+                data_out <= cpuInput0;
+                cpuOutput1 <= cpuInput0;
+                state <= DEPOSIT_WAIT_WRITE_MEM;
+              end
+            else
+            if (buttonState[`DEPOSIT_NEXT] == 1)
+              begin
+                buttonState[`DEPOSIT_NEXT] <= 0;
+                write <= 0;
+                operationType <= `ALU_OP;
+                operation <= `ADD_OP;
+                operand1 <= register[PC];
+                operand2 <= 1;
+                state <= DEPOSIT_WAIT_NEXT;
+              end
+          end
+        EXAMINE_WAIT_NEXT:
+          begin
+            $display("EXAMINE_WAIT_NEXT");
+            register[PC] <= result;
+            address <= result;
+            cpuOutput0 <= result;
+            state <= EXAMINE_WAIT_READ_MEM;
+          end
+        EXAMINE_WAIT_READ_MEM:
+          begin
+            $display("EXAMINE_WAIT_READ_MEM");
+            state <= EXAMINE_SHOW_READ_MEM;
+          end
+        EXAMINE_SHOW_READ_MEM:
+          begin
+            $display("EXAMINE_WAIT_READ_MEM");
+            cpuOutput1 <= data_in;
+            state <= STOPPED;
+          end
+        DEPOSIT_WAIT_NEXT:
+          begin
+            $display("DEPOSIT_WAIT_NEXT");
+            write <= 1;
+            register[PC] <= result;
+            address <= result;
+            cpuOutput0 <= result;
+            data_out <= cpuInput0;
+            cpuOutput1 <= cpuInput0;
+            state <= DEPOSIT_WAIT_WRITE_MEM;
+          end
+        DEPOSIT_WAIT_WRITE_MEM:
+          begin
+            $display("DEPOSIT_WAIT_WRITE_MEM");
+            write <= 0;
+            state <= STOPPED;
+          end
+      endcase
+      $display("   State=%02X,R0=%04X,R1=%04X,R2=%04X,R3=%04X,R4=%04X,R5=%04X,R6=%04X,R7=%04X,C=%B,Z=%B,N=%B,Address=%04x,data_in=%04X",state,register[0],register[1],register[2],register[3],register[4],register[5],register[6],register[7],carry,zero,negative,address,data_in);
     end
 endmodule
 `endif
