@@ -1,25 +1,77 @@
-// Pong VGA game
-// (c) fpga4fun.com
+`include "K16Cpu.v"
+`include "K16Video.v"
+`include "K16Ram.v"
+`include "K16Io.v"
 
-`include "registerToPixel.v"
-`include "alu.v"
-`include "sprite.v"
-
-module pong(clk_16, vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B, quadA, quadB, USBPU);
+module K16Computer(clk_16,
+            vga_h_sync,
+            vga_v_sync,
+            vga_R,
+            vga_G,
+            vga_B,
+            io_led0,
+            io_led1,
+            io_led2,
+            io_led3,
+            io_clk,
+            io_addr0,
+            io_addr1,
+            io_addr2,
+            sw_col4,
+            sw_col3,
+            sw_col2,
+            sw_col1,
+            sw_reg3,
+            sw_reg2,
+            sw_reg1,
+            sound);
 
   input clk_16;
-  output vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B;
-  input quadA, quadB;
-  output USBPU;
+  output vga_h_sync;
+  output vga_v_sync;
+  output vga_R;
+  output vga_G;
+  output vga_B;
+  output io_led0;
+  output io_led1;
+  output io_led2;
+  output io_led3;
+  output io_clk;
+  output io_addr0;
+  output io_addr1;
+  output io_addr2;
+  input sw_col4;
+  input sw_col3;
+  input sw_col2;
+  input sw_col1;
+  input sw_reg3;
+  input sw_reg2;
+  input sw_reg1;
+  output sound;
 
-  wire display_on;
-  wire [9:0] hpos;
-  wire [9:0] vpos;
+  reg  [10:0] frame_buffer_waddr_bus;
+  wire [10:0] frame_buffer_raddr_bus;
+  reg  [15:0] frame_buffer_din_bus;
+  wire [15:0] frame_buffer_dout_bus;
+  reg         frame_buffer_write;
+  wire [15:0] cpu_addr_bus;
+  wire [15:0] cpu_dout_bus;
+  reg  [15:0] cpu_din_bus;
+  wire        cpu_write;
+  reg  [9:0]  ram_addr_bus;
+  wire [15:0] ram_dout_bus;
+  reg  [15:0] ram_din_bus;
+  reg         ram_write;
+  reg  [2:0]  io_addr_bus;
+  wire [15:0] io_dout_bus;
+  reg  [15:0] io_din_bus;
+  reg         io_write;
+  wire stop;
+  wire reset;
+  wire hold;
+  wire busy;
+
   wire locked, clk;
-
-  reg[15:0] register [0:7];
-
-  assign USBPU = 0;
 
   SB_PLL40_CORE #(
                   .FEEDBACK_PATH("SIMPLE"),
@@ -35,98 +87,124 @@ module pong(clk_16, vga_h_sync, vga_v_sync, vga_R, vga_G, vga_B, quadA, quadB, U
                   .PLLOUTCORE(clk)
                  );
 
-  hvsync_generator syncgen(.clk(clk),
-                           .vga_h_sync(vga_h_sync),
-                           .vga_v_sync(vga_v_sync),
-                           .display_on(display_on),
-                           .hpos(hpos),
-                           .vpos(vpos));
+  K16Video video(
+    .clk(clk),
+    .reset(reset),
+    .hsync(vga_h_sync),
+    .vsync(vga_v_sync),
+    .vga_R(vga_R),
+    .vga_G(vga_G),
+    .vga_B(vga_B),
+    .frame_buffer_addr(frame_buffer_raddr_bus),
+    .want_read_frame_buffer(hold),
+    .frame_buffer_data(frame_buffer_dout_bus));
 
-  // player position
-  reg [9:0] player_x = 100;
-  reg [9:0] player_y = 150;
+  K16DualPortRam frame_buffer(
+    .din(frame_buffer_din_bus),
+    .write_en(frame_buffer_write),
+    .waddr(frame_buffer_waddr_bus),
+    .wclk(clk),
+    .raddr(frame_buffer_raddr_bus),
+    .rclk(clk),
+    .dout(frame_buffer_dout_bus));
 
-  // car bitmap ROM and associated wires
-  wire [3:0] spriteLine;
-  wire [63:0] spriteBits;
+  K16SinglePortRam ram(
+    .din(ram_din_bus),
+    .addr(ram_addr_bus),
+    .write_en(ram_write),
+    .clk(clk),
+    .dout(ram_dout_bus));
 
-  SpriteBitmap bitmap(.line(spriteLine),
-                      .bits(spriteBits));
+  K16Io io(
+    .din(io_din_bus),
+    .addr(io_addr_bus),
+    .write_en(io_write),
+    .clk(clk),
+    .dout(io_dout_bus),
+    .stop(stop),
+    .reset(reset),
+    .io_leds({io_led3, io_led2, io_led1, io_led0}),
+    .io_clk(io_clk),
+    .io_addr({io_addr2, io_addr1, io_addr0}),
+    .io_switches({sw_col4, sw_col3, sw_col2, sw_col1}),
+    .io_reg_switches({sw_reg3, sw_reg2, sw_reg1}),
+    .sound(sound));
 
-  // convert player X/Y to 9 bits and compare to CRT hpos/vpos
-  wire vstart = player_y == vpos;
-  wire hstart = player_x == hpos;
+  K16Cpu cpu(
+    .clk(clk),
+    .reset(reset),
+    .stop(stop),
+    .hold(hold),
+    .busy(busy),
+    .address(cpu_addr_bus),
+    .data_in(cpu_din_bus),
+    .data_out(cpu_dout_bus),
+    .write(cpu_write));
 
-  wire redPixel;
-  wire greenPixel;
-  wire bluePixel;
-  wire alphaPixel;
-  wire in_progress;	// 1 = rendering taking place on scanline
+  always @(*)
+    begin
+      casez (cpu_addr_bus)
+        16'b000000??????????: // RAM
+          begin
+            ram_write = cpu_write;
+            frame_buffer_write = 0;
+            io_write = 0;
 
-  // sprite renderer module
-  SpriteRenderer renderer(.theClk(clk),
-                          .vstart(vstart),
-                          .load(vga_h_sync),
-                          .hstart(hstart),
-                          .theSpriteLine(spriteLine),
-                          .theSpriteBits(spriteBits),
-                          .red(redPixel),
-                          .green(greenPixel),
-                          .blue(bluePixel),
-                          .alpha(alphaPixel),
-                          .in_progress(in_progress));
+            ram_addr_bus = cpu_addr_bus[9:0];
+            frame_buffer_waddr_bus = 0;
+            io_addr_bus = 0;
 
-  wire carry = 0;
-  wire carryOut;
-  wire zeroOut;
-  wire negativeOut;
-  wire [15:0] result;
-  Alu alu1(.operand1(register[1]),
-           .operand2(register[2]),
-           .carryIn(carry),
-           .operationType(`ALU_OP),
-           .operation(`AND_OP),
-           .result(result),
-           .carryOut(carryOut),
-           .zeroOut(zeroOut),
-           .negativeOut(negativeOut));
+            cpu_din_bus = ram_dout_bus;
+            ram_din_bus = cpu_dout_bus;
+            frame_buffer_din_bus = 0;
+            io_din_bus = 0;
+          end
+        16'b10000???????????: // Frame buffer
+          begin
+            ram_write = 0;
+            frame_buffer_write = cpu_write;
+            io_write = 0;
 
-  always @(posedge vga_v_sync)
-  begin
-    register[0] = register[0] + 1;
-    register[1] = register[1] + 2;
-    register[2] = register[2] + 3;
-    register[3] = register[3] + 4;
-    register[4] = register[4] + 5;
-    register[5] = register[5] + 6;
-    register[6] = carryOut;
-    register[7] = result[15:0];
-  end
+            ram_addr_bus = 0;
+            frame_buffer_waddr_bus = cpu_addr_bus[10:0];
+            io_addr_bus = 0;
 
-  wire pixel;
+            cpu_din_bus = 0;
+            ram_din_bus = 0;
+            frame_buffer_din_bus = cpu_dout_bus;
+            io_din_bus = 0;
+          end
+        16'b1111111111111???: // IO
+          begin
+            ram_write = 0;
+            frame_buffer_write = 0;
+            io_write = cpu_write;
 
-  wire [4:0] column = hpos[6:2];
-  wire [2:0] line = vpos[4:2];
+            ram_addr_bus = 0;
+            frame_buffer_waddr_bus = 0;
+            io_addr_bus = cpu_addr_bus[2:0];
 
-  RegisterToPixel r1(.register(register[vpos[7:5]]),
-                     .line(line),
-                     .column(column),
-                     .pixel(pixel));
-  wire r = (redPixel || !alphaPixel) && display_on;
-  wire g = (greenPixel || !alphaPixel) && display_on;
-  wire b = (bluePixel || !alphaPixel) && display_on;
+            cpu_din_bus = io_dout_bus;
+            ram_din_bus = 0;
+            frame_buffer_din_bus = 0;
+            io_din_bus = cpu_dout_bus;
+          end
+        default:
+          begin
+            ram_write = 0;
+            frame_buffer_write = 0;
+            io_write = 0;
 
-/*
-  wire r = display_on && ((redPixel && alphaPixel && in_progress));
-  wire g = display_on && (pixel && (hpos[9:7] == 3'b010)) || (greenPixel && alphaPixel);
-  wire b = display_on && ((bluePixel && alphaPixel));
-*/
-  reg vga_R, vga_G, vga_B;
-  always @(posedge clk)
-  begin
-  	vga_R <= r;
-  	vga_G <= g ^ pixel;
-  	vga_B <= b;
-  end
+            ram_addr_bus = 0;
+            frame_buffer_waddr_bus = 0;
+            io_addr_bus = 0;
+
+            cpu_din_bus = 0;
+            ram_din_bus = 0;
+            frame_buffer_din_bus = 0;
+            io_din_bus = 0;
+          end
+      endcase
+    end
 
 endmodule

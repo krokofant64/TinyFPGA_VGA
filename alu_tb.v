@@ -1,4 +1,4 @@
-`include "alu.v"
+`include "K16Alu.v"
 
 `timescale 1 ns/10 ps  // time-unit = 1 ns, precision = 10 ps
 
@@ -17,15 +17,15 @@ wire cOut;
 wire zOut;
 wire nOut;
 
-Alu alu(.operand1(a),
-        .operand2(b),
-        .carryIn(c),
-        .operationType(operationType),
-        .operation(operation),
-        .result(r),
-        .carryOut(cOut),
-        .zeroOut(zOut),
-        .negativeOut(nOut));
+K16Alu alu(.operand1(a),
+           .operand2(b),
+           .carryIn(c),
+           .operationType(operationType),
+           .operation(operation),
+           .result(r),
+           .carryOut(cOut),
+           .zeroOut(zOut),
+           .negativeOut(nOut));
 
 initial begin
 //   $dumpfile("alu_tb.vcd");

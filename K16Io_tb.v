@@ -1,5 +1,5 @@
 `include "K16Io.v"
-
+/*
 `timescale 1 ns/10 ps  // time-unit = 1 ns, precision = 10 ps
 
 module test3();
@@ -39,28 +39,29 @@ cpuOutput0 <= 16'h1234;
 cpuOutput1 <= 16'h5678;
 @(posedge clk);
 
-$display("select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
+$display($time, " select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
 @(posedge clk);
-$display("select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
+$display($time, " select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
 @(posedge clk);
-$display("select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
+$display($time, " select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
 @(posedge clk);
-$display("select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
+$display($time, " select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
 @(posedge clk);
-$display("select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
+$display($time, " select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
 @(posedge clk);
-$display("select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
+$display($time, " select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
 @(posedge clk);
-$display("select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
+$display($time, " select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
 @(posedge clk);
-$display("select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
+$display($time, " select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
 @(posedge clk);
-$display("select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
+$display($time, " select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
 @(posedge clk);
-$display("select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
+$display($time, " select = %0X, outputBits = %0X, inputBits = %0x", select, outputBits, inputBits);
 
 
   $finish;
 
 end
 endmodule
+*/
