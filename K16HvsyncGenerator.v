@@ -1,4 +1,7 @@
-module hvsync_generator(clk, vga_h_sync, vga_v_sync, display_on, hpos, vpos);
+`ifndef K16HVSYNCGENERATOR_H
+`define K16HVSYNCGENERATOR_H
+
+module K16HvsyncGenerator(clk, vga_h_sync, vga_v_sync, display_on, hpos, vpos);
 input clk;
 output vga_h_sync, vga_v_sync;
 output reg display_on;
@@ -42,3 +45,5 @@ assign vga_h_sync = ~vga_HS;
 assign vga_v_sync = ~vga_VS;
 
 endmodule
+
+`endif

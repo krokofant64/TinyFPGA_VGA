@@ -1,4 +1,4 @@
-`ifndef ALU_V
+ `ifndef ALU_V
 `define ALU_V
 
 // OPERATION TYPES
@@ -33,19 +33,17 @@
 `define LDLZI_OP 3'b110
 `define LDHZI_OP 3'b111
 
-module Alu(operand1, operand2, carryIn, operationType, operation, result, carryOut, zeroOut, negativeOut);
+module K16Alu(operand1, operand2, carryIn, operationType, operation, result, carryOut, zeroOut, negativeOut);
 
-  parameter N = 16;	// default width = 16 bits
-
-  input [N-1:0]      operand1;
-  input [N-1:0]      operand2;
+  input [15:0]      operand1;
+  input [15:0]      operand2;
   input              carryIn;
-  input [2:0]        operationType;
+  input [1:0]        operationType;
   input [2:0]        operation;
   output reg         carryOut;
   output reg         zeroOut;
   output reg         negativeOut;
-  output reg [N-1:0] result;
+  output reg [15:0] result;
 
   always @(*)
   begin
@@ -63,27 +61,33 @@ module Alu(operand1, operand2, carryIn, operationType, operation, result, carryO
     else
     if (operationType == `SHIFT_OP)
       case (operation)
-        `SHR_OP:   {carryOut, result} = {operand1[0], 1'b0, operand1[N-1:1]};
+        `SHR_OP:   {carryOut, result} = {operand1[0], 1'b0, operand1[15:1]};
         `SHL_OP:   {carryOut, result} = {operand1, 1'b0};
-        `ASHR_OP:  {carryOut, result} = {operand1[0], operand1[N-1], operand1[N-1], operand1[N-2:1]};
-        `ROR_OP:   {carryOut, result} = {operand1[0], carryIn, operand1[N-1:1]};
+        `ASHR_OP:  {carryOut, result} = {operand1[0], operand1[15], operand1[15], operand1[14:1]};
+        `ROR_OP:   {carryOut, result} = {operand1[0], carryIn, operand1[15:1]};
         `ROL_OP:   {carryOut, result} = {operand1, carryIn};
+        default:   {carryOut, result} = {carryIn, operand1};
       endcase
     else
     if (operationType == `LOAD_OP)
       case (operation)
         `COPY_OP:  {carryOut, result} = {carryIn, operand1};
-        `LDL_OP:   {carryOut, result} = {carryIn, 8'b0, operand1[N/2-1:0]};
-        `LDH_OP:   {carryOut, result} = {carryIn, 8'b0, operand1[N-1:N/2]};
-        `SWAP_OP:  {carryOut, result} = {carryIn, operand1[N/2-1:0], operand1[N-1:N/2]};
-        `LDLI_OP:  {carryOut, result} = {carryIn, operand2[N-1:N/2], operand1[N/2-1:0]};
-        `LDHI_OP:  {carryOut, result} = {carryIn, operand1[N-1:N/2], operand2[N/2-1:0]};
-        `LDLZI_OP: {carryOut, result} = {carryIn, 8'b0, operand1[N/2-1:0]};
-        `LDHZI_OP: {carryOut, result} = {carryIn, operand1[N-1:N/2], 8'b0};
+        `LDL_OP:   {carryOut, result} = {carryIn, operand2[15:8], operand1[7:0]};
+        `LDH_OP:   {carryOut, result} = {carryIn, operand1[7:0], operand2[7:0]};
+        `SWAP_OP:  {carryOut, result} = {carryIn, operand1[7:0], operand1[15:8]};
+        `LDLI_OP:  {carryOut, result} = {carryIn, operand1[15:8], operand2[7:0]};
+        `LDHI_OP:  {carryOut, result} = {carryIn, operand2[7:0], operand1[7:0]};
+        `LDLZI_OP: {carryOut, result} = {carryIn, 8'b0, operand2[7:0]};
+        `LDHZI_OP: {carryOut, result} = {carryIn, operand2[7:0], 8'b0};
       endcase
-    negativeOut <= result[N-1];
-    zeroOut <= result == 0;
+    else
+      begin
+        {carryOut, result} = {carryIn, operand1};
+      end
+
+    negativeOut = result[15];
+    zeroOut = result == 0;
+    $display(".  .  operationType=%02B, operation=%02B, operand1=%04X, operand2=%04X, result=%04X, carryOut=%b", operationType, operation, operand1, operand2, result, carryOut);
   end
 endmodule
-
 `endif

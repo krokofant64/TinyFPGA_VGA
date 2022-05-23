@@ -51,7 +51,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
   reg enableInterrupt;
 
   // CPU state
-  reg [5:0] state;
+  reg [5:0] state = RESET;
 
   // CPU states
   localparam RESET   = 0;
@@ -91,20 +91,21 @@ module K16Cpu(clk, reset, stop, hold, busy,
   localparam PANEL_SHOW_DATA = 33;
   localparam PANEL_SHOW_ADDR = 34;
   localparam PANEL_WAIT_CTRL_SWITCHES = 35;
-
+  localparam PANEL_EXAMINE_SET_ADDR = 36;
+  
   reg [15:0]  operand1;
   reg [15:0]  operand2;
   wire [15:0] result;
   reg [2:0]   operation;
   reg [1:0]   operationType;
-  reg         running = 1;
+  reg         running;
   wire        carryOut;
   wire        zeroOut;
   wire        negativeOut;
 
   reg         key_valid;
 
-  K16Alu #(16) alu(
+  K16Alu alu(
     .operand1(operand1),
     .operand2(operand2),
     .carryIn(carry),
@@ -150,6 +151,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
              carry <= 0;
              zero <= 0;
              negative <= 0;
+             running <= 0;
              state <= FETCH_INSTR;
            end
          FETCH_INSTR:
@@ -166,8 +168,10 @@ module K16Cpu(clk, reset, stop, hold, busy,
                  state <= WAIT_INSTR;
                end
              else
-               write <= 0;
-               state <= PANEL_FETCH_DATA;
+               begin
+                 write <= 0;
+                 state <= PANEL_FETCH_DATA;
+               end
            end
          WAIT_INSTR:
            begin
@@ -213,6 +217,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
                     operationType <= `LOAD_OP;
                     operation <= {1'b0, data_in[1:0]};
                     operand1 <= register[data_in[9:7]];
+                    operand2 <= register[data_in[12:10]];
                     destReg <= data_in[12:10];
                     state <= STORE_RESULT;
                   end
@@ -325,8 +330,8 @@ module K16Cpu(clk, reset, stop, hold, busy,
                      write <= 0;
                      operationType <= `LOAD_OP;
                      operation <= {1'b1, data_in[9:8]};
-                     operand1 <= {8'b00000000, data_in[7:0]};
-                     operand2 <= register[data_in[12:10]];
+                     operand1 <= register[data_in[12:10]];
+                     operand2 <= {8'b00000000, data_in[7:0]};
                      destReg <= data_in[12:10];
                      state <= STORE_RESULT;
                   $display("   operation=%03B,operand1=%04X,dest=%03B",operation,operand1,data_in[12:10]);
@@ -608,7 +613,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
               end
             else
               begin
-                key_valid <= 1;
+                key_valid <= (data_in[3:0] == `NONE);
                 state <= STOPPED;
               end
           end
@@ -629,10 +634,16 @@ module K16Cpu(clk, reset, stop, hold, busy,
           begin
             $display("PANEL_EXAMINE_WAIT_ADDR");
             write <= 0;
-            register[PC] <= data_in;
-            address <= data_in;
-            state <= PANEL_WAIT_DATA;
+            state <= PANEL_EXAMINE_SET_ADDR;
           end
+          PANEL_EXAMINE_SET_ADDR:
+            begin
+              $display("PANEL_EXAMINE_SET_ADDR");
+              write <= 0;
+              register[PC] <= data_in;
+              address <= data_in;
+              state <= PANEL_WAIT_DATA;
+            end
         PANEL_EXAMINE_WAIT_NEXT:
           begin
             $display("PANEL_EXAMINE_WAIT_NEXT");
@@ -741,7 +752,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
             state <= STOPPED;
           end
       endcase
-      $display(".  State=%02X,R0=%04X,R1=%04X,R2=%04X,R3=%04X,R4=%04X,R5=%04X,R6=%04X,R7=%04X,C=%B,Z=%B,N=%B,Address=%04x,data_in=%04X",state,register[0],register[1],register[2],register[3],register[4],register[5],register[6],register[7],carry,zero,negative,address,data_in);
+      $display(".  State=%02X,R0=%04X,R1=%04X,R2=%04X,R3=%04X,R4=%04X,R5=%04X,R6=%04X,R7=%04X,C=%B,Z=%B,N=%B,Address=%04x,data_in=%04X,write=%01X",state,register[0],register[1],register[2],register[3],register[4],register[5],register[6],register[7],carry,zero,negative,address,data_in,write);
     end
 endmodule
 

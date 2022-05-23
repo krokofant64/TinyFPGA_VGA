@@ -146,63 +146,63 @@ module K16Computer(clk_16,
       casez (cpu_addr_bus)
         16'b000000??????????: // RAM
           begin
-            ram_write = cpu_write;
-            frame_buffer_write = 0;
-            io_write = 0;
+            ram_write <= cpu_write;
+            frame_buffer_write <= 0;
+            io_write <= 0;
 
-            ram_addr_bus = cpu_addr_bus[9:0];
-            frame_buffer_waddr_bus = 0;
-            io_addr_bus = 0;
+            ram_addr_bus <= cpu_addr_bus[9:0];
+            frame_buffer_waddr_bus <= 0;
+            io_addr_bus <= 0;
 
-            cpu_din_bus = ram_dout_bus;
-            ram_din_bus = cpu_dout_bus;
-            frame_buffer_din_bus = 0;
-            io_din_bus = 0;
+            cpu_din_bus <= ram_dout_bus;
+            ram_din_bus <= cpu_dout_bus;
+            frame_buffer_din_bus <= 0;
+            io_din_bus <= 0;
           end
         16'b10000???????????: // Frame buffer
           begin
-            ram_write = 0;
-            frame_buffer_write = cpu_write;
-            io_write = 0;
+            ram_write <= 0;
+            frame_buffer_write <= cpu_write;
+            io_write <= 0;
 
-            ram_addr_bus = 0;
-            frame_buffer_waddr_bus = cpu_addr_bus[10:0];
-            io_addr_bus = 0;
+            ram_addr_bus <= 0;
+            frame_buffer_waddr_bus <= cpu_addr_bus[10:0];
+            io_addr_bus <= 0;
 
-            cpu_din_bus = 0;
-            ram_din_bus = 0;
-            frame_buffer_din_bus = cpu_dout_bus;
-            io_din_bus = 0;
+            cpu_din_bus <= 0;
+            ram_din_bus <= 0;
+            frame_buffer_din_bus <= cpu_dout_bus;
+            io_din_bus <= 0;
           end
         16'b1111111111111???: // IO
           begin
-            ram_write = 0;
-            frame_buffer_write = 0;
-            io_write = cpu_write;
+            ram_write <= 0;
+            frame_buffer_write <= 0;
+            io_write <= cpu_write;
 
-            ram_addr_bus = 0;
-            frame_buffer_waddr_bus = 0;
-            io_addr_bus = cpu_addr_bus[2:0];
+            ram_addr_bus <= 0;
+            frame_buffer_waddr_bus <= 0;
+            io_addr_bus <= cpu_addr_bus[2:0];
 
-            cpu_din_bus = io_dout_bus;
-            ram_din_bus = 0;
-            frame_buffer_din_bus = 0;
-            io_din_bus = cpu_dout_bus;
+            cpu_din_bus <= io_dout_bus;
+            ram_din_bus <= 0;
+            frame_buffer_din_bus <= 0;
+            io_din_bus <= cpu_dout_bus;
           end
         default:
           begin
-            ram_write = 0;
-            frame_buffer_write = 0;
-            io_write = 0;
+            ram_write <= 0;
+            frame_buffer_write <= 0;
+            io_write <= 0;
 
-            ram_addr_bus = 0;
-            frame_buffer_waddr_bus = 0;
-            io_addr_bus = 0;
+            ram_addr_bus <= 0;
+            frame_buffer_waddr_bus <= 0;
+            io_addr_bus <= 0;
 
-            cpu_din_bus = 0;
-            ram_din_bus = 0;
-            frame_buffer_din_bus = 0;
-            io_din_bus = 0;
+            cpu_din_bus <= 0;
+            ram_din_bus <= 0;
+            frame_buffer_din_bus <= 0;
+            io_din_bus <= 0;
           end
       endcase
     end

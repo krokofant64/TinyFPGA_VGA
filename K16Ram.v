@@ -18,125 +18,152 @@ module K16SinglePortRam (din, addr, write_en, clk, dout);// 1024x16
     end
   initial
     begin
-          // .define $AddrSwtch 0xFFF8
-          // .define $CtrlSwtch 0xFFF9
-          // .define $AddrLeds  0xFFFA
-          // .define $DataLeds  0xFFFB
-          // .define $RegSwtch  0xFFFC
-          // .define $IoCntrLo  0xFFFD
-          // .define $IoCntrHi  0xFFFE
-          //
-          // .define $FrameBuf  0x8000
-          //
-          // .define $Black     0x0000
-          // .define $Blue      0x0001
-          // .define $Green     0x0002
-          // .define $Cyan      0x0003
-          // .define $Red       0x0004
-          // .define $Magenta   0x0005
-          // .define $Yellow    0x0006
-          // .define $White     0x0007
-          //
-          // .define $BgBlack   ($Black << 3)
-          // .define $BgBlue    ($Blue << 3)
-          // .define $BgGreen   ($Green << 3)
-          // .define $BgCyan    ($Cyan << 3)
-          // .define $BgRed     ($Red << 3)
-          // .define $BgMagenta ($Magenta << 3)
-          // .define $BgYellow  ($Yellow << 3)
-          // .define $BgWhite   ($White << 3)
-          //
-      mem[0] = 16'h7b01; //                LDHZ SP 0x01 ; Set SP to 0x0100
-      mem[1] = 16'h7300; // Start:         LDHZ R4 0x00
-      mem[2] = 16'h6dff; //                LDH R3 $IoCntrLo.H
-      mem[3] = 16'h6cfd; //                LDL R3 $IoCntrLo.L
-      mem[4] = 16'hc980; //                LD  R2 [R3]
-      mem[5] = 16'h6201; //                LDLZ R0 1
-      mem[6] = 16'h6604; //                LDLZ R1 4
-      mem[7] = 16'hbc0b; //                JSR DisplayReg
-      mem[8] = 16'h6cfe; //                LDL R3 $IoCntrHi.L
-      mem[9] = 16'hc980; //                LD R2 [R3]
-      mem[10] = 16'h6201; //                LDLZ R0 1
-      mem[11] = 16'h6605; //                LDLZ R1 5
-      mem[12] = 16'hbc06; //                JSR DisplayReg
-      mem[13] = 16'h0a08; //                LD R2 R4
-      mem[14] = 16'h6201; //                LDLZ R0 1
-      mem[15] = 16'h6607; //                LDLZ R1 7
-      mem[16] = 16'hbc02; //                JSR DisplayReg
-      mem[17] = 16'h120c; //                INC R4 R4
-      mem[18] = 16'h9fee; //                JMP Start
-          //
-          // ; Display the value of R2 in hexadecimal format at screen column R0, and row R1
-          // ; [in]   R0 = column
-          // ; [in]   R1 = row
-          // ; [in]   R2 = reg
-      mem[19] = 16'h2c0c; // DisplayReg:    PSH R3
-      mem[20] = 16'h300c; //                PSH R4
-      mem[21] = 16'h340c; //                PSH R5
-      mem[22] = 16'hbc1b; //                JSR GetCursorPos
-      mem[23] = 16'h720f; //                LDLZ R4 0x0F
-      mem[24] = 16'h090b; //                SWP R2 R2
-      mem[25] = 16'h0d09; //                LDL R3 R2
-      mem[26] = 16'h2d80; //                SHR R3 R3
-      mem[27] = 16'h2d80; //                SHR R3 R3
-      mem[28] = 16'h2d80; //                SHR R3 R3
-      mem[29] = 16'h2d80; //                SHR R3 R3
-      mem[30] = 16'h0dc4; //                AND R3 R3 R4
-      mem[31] = 16'hbc1f; //               JSR WriteHexDigit
-      mem[32] = 16'h0d09; //                LDL R3 R2
-      mem[33] = 16'h0dc4; //                AND R3 R3 R4
-      mem[34] = 16'hbc1c; //                JSR WriteHexDigit
-      mem[35] = 16'h090b; //                SWP R2 R2
-      mem[36] = 16'h0d09; //                LDL R3 R2
-      mem[37] = 16'h2d80; //                SHR R3 R3
-      mem[38] = 16'h2d80; //                SHR R3 R3
-      mem[39] = 16'h2d80; //                SHR R3 R3
-      mem[40] = 16'h2d80; //                SHR R3 R3
-      mem[41] = 16'h0dc4; //                AND R3 R3 R4
-      mem[42] = 16'hbc14; //               JSR WriteHexDigit
-      mem[43] = 16'h0d09; //                LDL R3 R2
-      mem[44] = 16'h0dc4; //                AND R3 R3 R4
-      mem[45] = 16'hbc11; //                JSR WriteHexDigit
-      mem[46] = 16'h340d; //                POP R5
-      mem[47] = 16'h300d; //                POP R4
-      mem[48] = 16'h2c0d; //                POP R3
-      mem[49] = 16'h3c0d; //                RET
-          //
-          // ; Get the address of screen column R0, row R1
-          // ; [in]   R0 = column
-          // ; [in]   R1 = row
-          // ; [out]  R5 = position
-      mem[50] = 16'h2c0c; // GetCursorPos:  PSH R3
-      mem[51] = 16'h7780; //                LDHZ R5 $FrameBuf.H
-      mem[52] = 16'h0c88; //                LD R3  R1 ; Multiply row by 40
-      mem[53] = 16'h2d81; //                SHL R3 R3
-      mem[54] = 16'h2d81; //                SHL R3 R3
-      mem[55] = 16'h2d81; //                SHL R3 R3
-      mem[56] = 16'h16b0; //                ADD R5 R5 R3
-      mem[57] = 16'h2d81; //                SHL R3 R3
-      mem[58] = 16'h2d81; //                SHL R3 R3
-      mem[59] = 16'h16b0; //                ADD R5 R5 R3
-      mem[60] = 16'h1680; //                ADD R5 R5 R0 ; Add column
-      mem[61] = 16'h2c0d; //                POP R3
-      mem[62] = 16'h3c0d; //                RET
-          //
-          // ; Write hex digit R3 at position R5 to screen
-          // ; [in]   R5 = pos
-          // ; [in]   R3 = hex digit
-      mem[63] = 16'h300c; // WriteHexDigit: PSH R4
-      mem[64] = 16'h720a; //                LDLZ R4 10
-      mem[65] = 16'h01ce; //                CMP R3 R4
-      mem[66] = 16'h4783; //                BCC NotDecimal
-      mem[67] = 16'h7230; //                LDLZ R4 '0'
-      mem[68] = 16'h0dc0; //                ADD R3 R3 R4
-      mem[69] = 16'h9c02; //                JMP StoreDigit
-      mem[70] = 16'h7237; // NotDecimal:    LDLZ R4 'A' - 10
-      mem[71] = 16'h0dc0; //                ADD R3 R3 R4
-      mem[72] = 16'h6d3c; // StoreDigit:    LDH R3 $BgWhite | $Red; White background red text
-      mem[73] = 16'hee80; //                STO R3 [R5]
-      mem[74] = 16'h168c; //                INC R5 R5
-      mem[75] = 16'h300d; //                POP R4
-      mem[76] = 16'h3c0d; //                RET
+    /*
+      mem[0] = 16'h7b01; //           LDHZ SP 0x01 ; Set SP to 0x0100
+      mem[1] = 16'hc383; // Start:    LD R0 Op1
+      mem[2] = 16'hcb83; //           LD R2 Op2
+      mem[3] = 16'hbc03; //           JSR Multiply
+      mem[4] = 16'h9ffc; //           JMP Start
+      mem[5] = 16'h01f4; // .data 500
+      mem[6] = 16'h000d; // .data 13
+                         //
+                         // ; Multiply  R0 * R2 -> R1 R2
+                         // ; [in]     R0 = operand1
+                         // ; [out]    R1 = result high
+                         // ; [in/out] R2 = operand2/result low
+      mem[7] = 16'h2c0c; // Multiply: PSH R3
+      mem[8] = 16'h6600; //           LDLZ R1 0
+      mem[9] = 16'h6e10; //           LDLZ R3 16
+      mem[10] = 16'h2900; //           SHR R2 R2
+      mem[11] = 16'h4781; // BitLoop:  BCC NoAdd
+      mem[12] = 16'h0480; //           ADD R1 R1 R0
+      mem[13] = 16'h2480; // NoAdd:    SHR R1 R1
+      mem[14] = 16'h2903; //           ROR R2 R2
+      mem[15] = 16'h0d8f; //           DEC R3 R3
+      mem[16] = 16'h4ffa; //           BZC BitLoop
+      mem[17] = 16'h2c0d; //           POP R3
+      mem[18] = 16'h3c0d; //           RET
+      */
+      // .define $AddrSwtch 0xFFF8
+      // .define $CtrlSwtch 0xFFF9
+      // .define $AddrLeds  0xFFFA
+      // .define $DataLeds  0xFFFB
+      // .define $RegSwtch  0xFFFC
+      // .define $IoCntrLo  0xFFFD
+      // .define $IoCntrHi  0xFFFE
+      //
+      // .define $FrameBuf  0x8000
+      //
+      // .define $Black     0x0000
+      // .define $Blue      0x0001
+      // .define $Green     0x0002
+      // .define $Cyan      0x0003
+      // .define $Red       0x0004
+      // .define $Magenta   0x0005
+      // .define $Yellow    0x0006
+      // .define $White     0x0007
+      //
+      // .define $BgBlack   ($Black << 3)
+      // .define $BgBlue    ($Blue << 3)
+      // .define $BgGreen   ($Green << 3)
+      // .define $BgCyan    ($Cyan << 3)
+      // .define $BgRed     ($Red << 3)
+      // .define $BgMagenta ($Magenta << 3)
+      // .define $BgYellow  ($Yellow << 3)
+      // .define $BgWhite   ($White << 3)
+      //
+mem[0] = 16'h7b01; //                LDHZ SP 0x01 ; Set SP to 0x0100
+mem[1] = 16'h7300; // Start:         LDHZ R4 0x00
+mem[2] = 16'h6dff; //                LDH R3 $IoCntrLo.H
+mem[3] = 16'h6cfd; //                LDL R3 $IoCntrLo.L
+mem[4] = 16'hc980; //                LD  R2 [R3]
+mem[5] = 16'h6201; //                LDLZ R0 1
+mem[6] = 16'h6604; //                LDLZ R1 4
+mem[7] = 16'hbc0b; //                JSR DisplayReg
+mem[8] = 16'h6cfe; //                LDL R3 $IoCntrHi.L
+mem[9] = 16'hc980; //                LD R2 [R3]
+mem[10] = 16'h6201; //                LDLZ R0 1
+mem[11] = 16'h6605; //                LDLZ R1 5
+mem[12] = 16'hbc06; //                JSR DisplayReg
+mem[13] = 16'h0a08; //                LD R2 R4
+mem[14] = 16'h6201; //                LDLZ R0 1
+mem[15] = 16'h6607; //                LDLZ R1 7
+mem[16] = 16'hbc02; //                JSR DisplayReg
+mem[17] = 16'h120c; //                INC R4 R4
+mem[18] = 16'h9fee; //                JMP Start
+      //
+      // ; Display the value of R2 in hexadecimal format at screen column R0, and row R1
+      // ; [in]   R0 = column
+      // ; [in]   R1 = row
+      // ; [in]   R2 = reg
+mem[19] = 16'h2c0c; // DisplayReg:    PSH R3
+mem[20] = 16'h300c; //                PSH R4
+mem[21] = 16'h340c; //                PSH R5
+mem[22] = 16'hbc1b; //                JSR GetCursorPos
+mem[23] = 16'h720f; //                LDLZ R4 0x0F
+mem[24] = 16'h090b; //                SWP R2 R2
+mem[25] = 16'h0d09; //                LDL R3 R2
+mem[26] = 16'h2d80; //                SHR R3 R3
+mem[27] = 16'h2d80; //                SHR R3 R3
+mem[28] = 16'h2d80; //                SHR R3 R3
+mem[29] = 16'h2d80; //                SHR R3 R3
+mem[30] = 16'h0dc4; //                AND R3 R3 R4
+mem[31] = 16'hbc1f; //               JSR WriteHexDigit
+mem[32] = 16'h0d09; //                LDL R3 R2
+mem[33] = 16'h0dc4; //                AND R3 R3 R4
+mem[34] = 16'hbc1c; //                JSR WriteHexDigit
+mem[35] = 16'h090b; //                SWP R2 R2
+mem[36] = 16'h0d09; //                LDL R3 R2
+mem[37] = 16'h2d80; //                SHR R3 R3
+mem[38] = 16'h2d80; //                SHR R3 R3
+mem[39] = 16'h2d80; //                SHR R3 R3
+mem[40] = 16'h2d80; //                SHR R3 R3
+mem[41] = 16'h0dc4; //                AND R3 R3 R4
+mem[42] = 16'hbc14; //               JSR WriteHexDigit
+mem[43] = 16'h0d09; //                LDL R3 R2
+mem[44] = 16'h0dc4; //                AND R3 R3 R4
+mem[45] = 16'hbc11; //                JSR WriteHexDigit
+mem[46] = 16'h340d; //                POP R5
+mem[47] = 16'h300d; //                POP R4
+mem[48] = 16'h2c0d; //                POP R3
+mem[49] = 16'h3c0d; //                RET
+      //
+      // ; Get the address of screen column R0, row R1
+      // ; [in]   R0 = column
+      // ; [in]   R1 = row
+      // ; [out]  R5 = position
+mem[50] = 16'h2c0c; // GetCursorPos:  PSH R3
+mem[51] = 16'h7780; //                LDHZ R5 $FrameBuf.H
+mem[52] = 16'h0c88; //                LD R3  R1 ; Multiply row by 40
+mem[53] = 16'h2d81; //                SHL R3 R3
+mem[54] = 16'h2d81; //                SHL R3 R3
+mem[55] = 16'h2d81; //                SHL R3 R3
+mem[56] = 16'h16b0; //                ADD R5 R5 R3
+mem[57] = 16'h2d81; //                SHL R3 R3
+mem[58] = 16'h2d81; //                SHL R3 R3
+mem[59] = 16'h16b0; //                ADD R5 R5 R3
+mem[60] = 16'h1680; //                ADD R5 R5 R0 ; Add column
+mem[61] = 16'h2c0d; //                POP R3
+mem[62] = 16'h3c0d; //                RET
+      //
+      // ; Write hex digit R3 at position R5 to screen
+      // ; [in]   R5 = pos
+      // ; [in]   R3 = hex digit
+mem[63] = 16'h300c; // WriteHexDigit: PSH R4
+mem[64] = 16'h720a; //                LDLZ R4 10
+mem[65] = 16'h01ce; //                CMP R3 R4
+mem[66] = 16'h4783; //                BCC NotDecimal
+mem[67] = 16'h7230; //                LDLZ R4 '0'
+mem[68] = 16'h0dc0; //                ADD R3 R3 R4
+mem[69] = 16'h9c02; //                JMP StoreDigit
+mem[70] = 16'h7237; // NotDecimal:    LDLZ R4 'A' - 10
+mem[71] = 16'h0dc0; //                ADD R3 R3 R4
+mem[72] = 16'h6d3c; // StoreDigit:    LDH R3 $BgWhite | $Red; White background red text
+mem[73] = 16'hee80; //                STO R3 [R5]
+mem[74] = 16'h168c; //                INC R5 R5
+mem[75] = 16'h300d; //                POP R4
+mem[76] = 16'h3c0d; //                RET
+      
     end
 endmodule
 
