@@ -357,6 +357,9 @@ K16Cpu cpu(
 
     ram[`CTRL_SWITCHES] = `INST_STEP;
     repeat (20) @(posedge clk);
+    if (ram[`ADDR_LEDS] != 16'h0001 ||
+        ram[`DATA_LEDS] != 16'h7300)
+      $error("ERROR: INST_STEP 1");
 
     ram[`CTRL_SWITCHES] = `NONE;
     repeat (5) @(posedge clk);
@@ -413,11 +416,55 @@ K16Cpu cpu(
     ram[`CTRL_SWITCHES] = `DEPOSIT_NEXT;
     ram[`ADDR_SWITCHES] = 16'hABCD;
     repeat (20) @(posedge clk);
-    if (ram[`ADDR_LEDS] != 101 || 
+    if (ram[`ADDR_LEDS] != 101 ||
         ram[`DATA_LEDS] != 16'hABCD ||
         ram[100] != 16'h1234 ||
         ram[101] != 16'hABCD)
        $error("ERROR: Deposit next 1");
+
+    ram[`CTRL_SWITCHES] = `NONE;
+    repeat (5) @(posedge clk);
+
+    ram[`REG_SWITCHES] = 7;
+    ram[`CTRL_SWITCHES] = `EXAMINE_REGISTER;
+    repeat (20) @(posedge clk);
+    if (ram[`ADDR_LEDS] != 101 ||
+        ram[`DATA_LEDS] != 101)
+       $error("ERROR: Examine register 1: ADDR=%04X, DATA=%04X", ram[`ADDR_LEDS], ram[`DATA_LEDS]);
+
+    ram[`CTRL_SWITCHES] = `NONE;
+    repeat (5) @(posedge clk);
+
+    ram[`REG_SWITCHES] = 0;
+    ram[`ADDR_SWITCHES] = 16'hBABE;
+    ram[`CTRL_SWITCHES] = `DEPOSIT_REGISTER;
+    repeat (20) @(posedge clk);
+    if (ram[`ADDR_LEDS] != 101 ||
+        ram[`DATA_LEDS] != 16'hBABE)
+       $error("ERROR: Deposit register 1: ADDR=%04X, DATA=%04X", ram[`ADDR_LEDS], ram[`DATA_LEDS]);
+
+    ram[`CTRL_SWITCHES] = `NONE;
+    repeat (5) @(posedge clk);
+
+    ram[`REG_SWITCHES] = 7;
+    ram[`CTRL_SWITCHES] = `EXAMINE_REGISTER;
+    repeat (20) @(posedge clk);
+    if (ram[`ADDR_LEDS] != 101 ||
+       ram[`DATA_LEDS] != 101)
+      $error("ERROR: Examine register 2: ADDR=%04X, DATA=%04X", ram[`ADDR_LEDS], ram[`DATA_LEDS]);
+
+    ram[`CTRL_SWITCHES] = `NONE;
+    repeat (5) @(posedge clk);
+   
+    ram[`REG_SWITCHES] = 0;
+    ram[`CTRL_SWITCHES] = `EXAMINE_REGISTER;
+    repeat (20) @(posedge clk);
+    if (ram[`ADDR_LEDS] != 101 ||
+       ram[`DATA_LEDS] != 16'hBABE)
+      $error("ERROR: Examine register 3: ADDR=%04X, DATA=%04X", ram[`ADDR_LEDS], ram[`DATA_LEDS]);
+
+
+
 
     $finish;
 end
