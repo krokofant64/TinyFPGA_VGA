@@ -92,7 +92,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
   localparam PANEL_SHOW_ADDR = 34;
   localparam PANEL_WAIT_CTRL_SWITCHES = 35;
   localparam PANEL_EXAMINE_SET_ADDR = 36;
-  
+
   reg [15:0]  operand1;
   reg [15:0]  operand2;
   wire [15:0] result;
@@ -338,14 +338,23 @@ module K16Cpu(clk, reset, stop, hold, busy,
                   end
                 16'b100?????????????:
                   begin
-                    $display("DECODE_INSTR - JMP, HLT");
-                    write <= 0;
-                    operationType <= `ALU_OP;
-                    operation <= `ADD_OP;
-                    operand1 <= register[data_in[12:10]];
-                    operand2 <= {{6{data_in[9]}}, data_in[9:0]};
-                    state <= JUMP;
-                    $display("   operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{{6{data_in[9]}}, data_in[9:0]});
+                    if (data_in[12:0] != 13'h1FFF)
+                      begin
+                        $display("DECODE_INSTR - JMP");
+                        write <= 0;
+                        operationType <= `ALU_OP;
+                        operation <= `ADD_OP;
+                        operand1 <= register[data_in[12:10]];
+                        operand2 <= {{6{data_in[9]}}, data_in[9:0]};
+                        state <= JUMP;
+                        $display("   operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{{6{data_in[9]}}, data_in[9:0]});
+                      end
+                    else
+                      begin
+                        $display("DECODE_INSTR - HLT");
+                        write <= 0;
+                        state <= PANEL_FETCH_DATA;
+                      end
                   end
                 16'b101?????????????:
                   begin

@@ -179,7 +179,11 @@ K16Cpu cpu(
     operation = `ADC_OP;
     operationType = `ALU_OP;
     #10;
-    if (r != 16'h001A || cOut != 1'b0) $error("ERROR: ADC_OP 1");
+    if (r != 16'h001A || cOut != 1'b0)
+      begin
+        $error("ERROR: ADC_OP 1");
+        $finish;
+      end
 
     a = 16'hF000;
     b = 16'h1243;
@@ -187,7 +191,11 @@ K16Cpu cpu(
     operation = `ADD_OP;
     operationType = `ALU_OP;
     #10
-    if (r != 16'h0243 || cOut != 1'b1) $error("ERROR: ADD_OP 1");
+    if (r != 16'h0243 || cOut != 1'b1)
+      begin
+        $error("ERROR: ADD_OP 1");
+        $finish;
+      end
 
     a = 16'h8234;
     b = 16'h0000;
@@ -195,7 +203,11 @@ K16Cpu cpu(
     operation = `SHL_OP;
     operationType = `SHIFT_OP;
     #10
-    if (r != 16'h0468 || cOut != 1'b1) $error("ERROR: ASL_OP 1");
+    if (r != 16'h0468 || cOut != 1'b1)
+      begin
+        $error("ERROR: ASL_OP 1");
+        $finish;
+      end
 
     a = 16'h8234;
     b = 16'h0000;
@@ -203,7 +215,11 @@ K16Cpu cpu(
     operation = `SHL_OP;
     operationType = `SHIFT_OP;
     #10
-    if (r != 16'h0468 || cOut != 1'b1) $error("ERROR: LSL_OP 1");
+    if (r != 16'h0468 || cOut != 1'b1)
+      begin
+        $error("ERROR: LSL_OP 1");
+        $finish;
+      end
 
     a = 16'h8234;
     b = 16'h0000;
@@ -211,7 +227,11 @@ K16Cpu cpu(
     operation = `ASHR_OP;
     operationType = `SHIFT_OP;
     #10
-    if (r != 16'hC11A || cOut != 1'b0) $error("ERROR: ASHR_OP 1");
+    if (r != 16'hC11A || cOut != 1'b0)
+      begin
+        $error("ERROR: ASHR_OP 1");
+        $finish;
+      end
 
     a = 16'h8235;
     b = 16'h0000;
@@ -219,7 +239,11 @@ K16Cpu cpu(
     operation = `ASHR_OP;
     operationType = `SHIFT_OP;
     #10
-    if (r != 16'hC11A || cOut != 1'b1) $error("ERROR: ASR_OP 2");
+    if (r != 16'hC11A || cOut != 1'b1)
+      begin
+        $error("ERROR: ASR_OP 2");
+        $finish;
+      end
 
     a = 16'h8234;
     b = 16'h0000;
@@ -227,7 +251,11 @@ K16Cpu cpu(
     operation = `SHR_OP;
     operationType = `SHIFT_OP;
     #10
-    if (r != 16'h411A || cOut != 1'b0) $error("ERROR: LSR_OP 1");
+    if (r != 16'h411A || cOut != 1'b0)
+      begin
+        $error("ERROR: LSR_OP 1");
+        $finish;
+      end
 
     a = 16'h8235;
     b = 16'h0000;
@@ -235,7 +263,11 @@ K16Cpu cpu(
     operation = `SHR_OP;
     operationType = `SHIFT_OP;
     #10
-    if (r != 16'h411A || cOut != 1'b1) $error("ERROR: LSR_OP 2");
+    if (r != 16'h411A || cOut != 1'b1)
+      begin
+        $error("ERROR: LSR_OP 2");
+        $finish;
+      end
 
     a = 16'h8235;
     b = 16'h0000;
@@ -243,7 +275,11 @@ K16Cpu cpu(
     operation = `ROL_OP;
     operationType = `SHIFT_OP;
     #10
-    if (r != 16'h046A || cOut != 1'b1) $error("ERROR: ROL_OP 1");
+    if (r != 16'h046A || cOut != 1'b1)
+      begin
+        $error("ERROR: ROL_OP 1");
+        $finish;
+      end
 
     a = 16'h8235;
     b = 16'h0000;
@@ -251,7 +287,11 @@ K16Cpu cpu(
     operation = `ROL_OP;
     operationType = `SHIFT_OP;
     #10
-    if (r != 16'h046B || cOut != 1'b1) $error("ERROR: ROL_OP 2");
+    if (r != 16'h046B || cOut != 1'b1)
+      begin
+        $error("ERROR: ROL_OP 2");
+        $finish;
+      end
 
     a = 16'h8235;
     b = 16'h0000;
@@ -259,7 +299,11 @@ K16Cpu cpu(
     operation = `ROR_OP;
     operationType = `SHIFT_OP;
     #10
-    if (r != 16'h411A || cOut != 1'b1) $error("ERROR: ROL_OP 1");
+    if (r != 16'h411A || cOut != 1'b1)
+      begin
+        $error("ERROR: ROL_OP 1");
+        $finish;
+      end
 
     a = 16'h8235;
     b = 16'h0000;
@@ -267,7 +311,11 @@ K16Cpu cpu(
     operation = `ROR_OP;
     operationType = `SHIFT_OP;
     #10
-    if (r != 16'hC11A || cOut != 1'b1) $error("ERROR: ROL_OP 2");
+    if (r != 16'hC11A || cOut != 1'b1)
+      begin
+        $error("ERROR: ROL_OP 2");
+        $finish;
+      end
 
     a = 16'h8235;
     b = 16'h0000;
@@ -275,7 +323,11 @@ K16Cpu cpu(
     operation = `NOT_OP;
     operationType = `ALU_OP;
     #10
-    if (r != 16'h7DCA || cOut != 1'b0) $error("ERROR: NOT_OP");
+    if (r != 16'h7DCA || cOut != 1'b0)
+      begin
+        $error("ERROR: NOT_OP");
+        $finish;
+      end
 
     a = 16'h8235;
     b = 16'h0000;
@@ -283,7 +335,11 @@ K16Cpu cpu(
     operation = `COPY_OP;
     operationType = `LOAD_OP;
     #10
-    if (r != 16'h8235 || cOut != 1'b1) $error("ERROR: COPY_OP");
+    if (r != 16'h8235 || cOut != 1'b1)
+      begin
+        $error("ERROR: COPY_OP");
+        $finish;
+      end
 
     a = 16'h8235;
     b = 16'h0000;
@@ -291,7 +347,11 @@ K16Cpu cpu(
     operation = `SWAP_OP;
     operationType = `LOAD_OP;
     #10
-    if (r != 16'h3582 || cOut != 1'b1) $error("ERROR: SWAP_OP");
+    if (r != 16'h3582 || cOut != 1'b1)
+      begin
+        $error("ERROR: SWAP_OP");
+        $finish;
+      end
 
     a = 16'h8235;
     b = 16'h0000;
@@ -299,7 +359,11 @@ K16Cpu cpu(
     operation = `LDL_OP;
     operationType = `LOAD_OP;
     #10
-    if (r != 16'h0035 || cOut != 1'b1) $error("ERROR: LDL_OP");
+    if (r != 16'h0035 || cOut != 1'b1)
+      begin
+        $error("ERROR: LDL_OP");
+        $finish;
+      end
 
     a = 16'h8235;
     b = 16'h0000;
@@ -307,7 +371,11 @@ K16Cpu cpu(
     operation = `LDH_OP;
     operationType = `LOAD_OP;
     #10
-    if (r != 16'h3500 || cOut != 1'b1) $error("ERROR: LDH_OP");
+    if (r != 16'h3500 || cOut != 1'b1)
+      begin
+        $error("ERROR: LDH_OP");
+        $finish;
+      end
 
     a = 16'h2100;
     b = 16'h1234;
@@ -315,7 +383,11 @@ K16Cpu cpu(
     operation = `LDLI_OP;
     operationType = `LOAD_OP;
     #10
-    if (r != 16'h2134 || cOut != 1'b1) $error("ERROR: LDLI_OP");
+    if (r != 16'h2134 || cOut != 1'b1)
+      begin
+        $error("ERROR: LDLI_OP");
+        $finish;
+      end
 
     a = 16'h21FE;
     b = 16'h1234;
@@ -323,7 +395,11 @@ K16Cpu cpu(
     operation = `LDHI_OP;
     operationType = `LOAD_OP;
     #10
-    if (r != 16'h34FE || cOut != 1'b1) $error("ERROR: LDHI_OP");
+    if (r != 16'h34FE || cOut != 1'b1)
+      begin
+        $error("ERROR: LDHI_OP");
+        $finish;
+      end
 
     a = 16'h2100;
     b = 16'h1234;
@@ -331,7 +407,11 @@ K16Cpu cpu(
     operation = `LDLZI_OP;
     operationType = `LOAD_OP;
     #10
-    if (r != 16'h0034 || cOut != 1'b1) $error("ERROR: LDLZI_OP");
+    if (r != 16'h0034 || cOut != 1'b1)
+      begin
+        $error("ERROR: LDLZI_OP");
+        $finish;
+      end
 
     a = 16'h21FE;
     b = 16'h1234;
@@ -339,7 +419,11 @@ K16Cpu cpu(
     operation = `LDHZI_OP;
     operationType = `LOAD_OP;
     #10
-    if (r != 16'h3400 || cOut != 1'b1) $error("ERROR: LDHZI_OP");
+    if (r != 16'h3400 || cOut != 1'b1)
+      begin
+        $error("ERROR: LDHZI_OP");
+        $finish;
+      end
 
     #10
     reset = 1;
@@ -359,7 +443,10 @@ K16Cpu cpu(
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 16'h0001 ||
         ram[`DATA_LEDS] != 16'h7300)
-      $error("ERROR: INST_STEP 1");
+      begin
+        $error("ERROR: INST_STEP 1");
+        $finish;
+      end
 
     ram[`CTRL_SWITCHES] = `NONE;
     repeat (5) @(posedge clk);
@@ -369,7 +456,10 @@ K16Cpu cpu(
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 16'h0001 ||
         ram[`DATA_LEDS] != 16'h7300)
-      $error("ERROR: Examine 1");
+      begin
+        $error("ERROR: Examine 1");
+        $finish;
+      end;
 
     ram[`CTRL_SWITCHES] = `NONE;
     repeat (5) @(posedge clk);
@@ -378,7 +468,10 @@ K16Cpu cpu(
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 16'h0002 ||
         ram[`DATA_LEDS] != 16'h6dff)
-      $error("ERROR: Examine next 1");
+      begin
+        $error("ERROR: Examine next 1");
+        $finish;
+      end;
 
     ram[`CTRL_SWITCHES] = `NONE;
     repeat (5) @(posedge clk);
@@ -387,7 +480,10 @@ K16Cpu cpu(
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 16'h0003 ||
         ram[`DATA_LEDS] != 16'h6cfd)
-      $error("ERROR: Examine next 2");
+      begin
+        $error("ERROR: Examine next 2");
+        $finish;
+      end
 
     ram[`CTRL_SWITCHES] = `NONE;
     repeat (5) @(posedge clk);
@@ -397,7 +493,10 @@ K16Cpu cpu(
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 100 ||
         ram[`DATA_LEDS] != 0)
-      $error("ERROR: Examine 2");
+      begin
+        $error("ERROR: Examine 2");
+        $finish;
+      end
 
     ram[`CTRL_SWITCHES] = `NONE;
     repeat (5) @(posedge clk);
@@ -408,7 +507,10 @@ K16Cpu cpu(
     if (ram[`ADDR_LEDS] != 100 ||
         ram[`DATA_LEDS] != 16'h1234 ||
         ram[100] != 16'h1234)
-      $error("ERROR: Deposit 1");
+      begin
+        $error("ERROR: Deposit 1");
+        $finish;
+      end
 
     ram[`CTRL_SWITCHES] = `NONE;
     repeat (5) @(posedge clk);
@@ -420,7 +522,10 @@ K16Cpu cpu(
         ram[`DATA_LEDS] != 16'hABCD ||
         ram[100] != 16'h1234 ||
         ram[101] != 16'hABCD)
-       $error("ERROR: Deposit next 1");
+       begin
+         $error("ERROR: Deposit next 1");
+         $finish;
+       end
 
     ram[`CTRL_SWITCHES] = `NONE;
     repeat (5) @(posedge clk);
@@ -430,7 +535,10 @@ K16Cpu cpu(
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 101 ||
         ram[`DATA_LEDS] != 101)
-       $error("ERROR: Examine register 1: ADDR=%04X, DATA=%04X", ram[`ADDR_LEDS], ram[`DATA_LEDS]);
+      begin
+        $error("ERROR: Examine register 1: ADDR=%04X, DATA=%04X", ram[`ADDR_LEDS], ram[`DATA_LEDS]);
+        $finish;
+      end
 
     ram[`CTRL_SWITCHES] = `NONE;
     repeat (5) @(posedge clk);
@@ -441,7 +549,10 @@ K16Cpu cpu(
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 101 ||
         ram[`DATA_LEDS] != 16'hBABE)
-       $error("ERROR: Deposit register 1: ADDR=%04X, DATA=%04X", ram[`ADDR_LEDS], ram[`DATA_LEDS]);
+      begin
+        $error("ERROR: Deposit register 1: ADDR=%04X, DATA=%04X", ram[`ADDR_LEDS], ram[`DATA_LEDS]);
+        $finish;
+      end
 
     ram[`CTRL_SWITCHES] = `NONE;
     repeat (5) @(posedge clk);
@@ -451,20 +562,231 @@ K16Cpu cpu(
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 101 ||
        ram[`DATA_LEDS] != 101)
-      $error("ERROR: Examine register 2: ADDR=%04X, DATA=%04X", ram[`ADDR_LEDS], ram[`DATA_LEDS]);
+      begin
+        $error("ERROR: Examine register 2: ADDR=%04X, DATA=%04X", ram[`ADDR_LEDS], ram[`DATA_LEDS]);
+        $finish;
+      end
 
     ram[`CTRL_SWITCHES] = `NONE;
     repeat (5) @(posedge clk);
-   
+
     ram[`REG_SWITCHES] = 0;
     ram[`CTRL_SWITCHES] = `EXAMINE_REGISTER;
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 101 ||
        ram[`DATA_LEDS] != 16'hBABE)
-      $error("ERROR: Examine register 3: ADDR=%04X, DATA=%04X", ram[`ADDR_LEDS], ram[`DATA_LEDS]);
+      begin
+        $error("ERROR: Examine register 3: ADDR=%04X, DATA=%04X", ram[`ADDR_LEDS], ram[`DATA_LEDS]);
+        $finish;
+      end
 
+    ram[0] = 16'h7b02; //                LDHZ SP 0x02 ; Set SP to 0x0200
+    ram[1] = 16'h9c01; //                JMP Start
+                       //
+    ram[2] = 16'h0000; // .data 0
+                       //
+    ram[3] = 16'h7495; // Start:         LDL R5 Error.L
+    ram[4] = 16'h7500; //                LDH R5 Error.H
+                       //
+    ram[5] = 16'h649a; //                LDL R1 Operand1_1.L     ; Test ADD
+    ram[6] = 16'h6500; //                LDH R1 Operand1_1.H
+    ram[7] = 16'hc480; //                LD R1 [R1]
+    ram[8] = 16'h689b; //                LDL R2 Operand2_1.L
+    ram[9] = 16'h6900; //                LDH R2 Operand2_1.H
+    ram[10] = 16'hc900; //                LD R2 [R2]
+    ram[11] = 16'h2009; //                SEC
+    ram[12] = 16'h0ca0; //                ADD R3 R1 R2
+    ram[13] = 16'h709e; //                LDL R4 Result_Add_1.L
+    ram[14] = 16'h7100; //                LDH R4 Result_Add_1.H
+    ram[15] = 16'hd200; //                LD R4 [R4]
+    ram[16] = 16'h01ce; //                CMP R3 R4
+    ram[17] = 16'h4e80; //                BZC [R5]
+                       //
+    ram[18] = 16'h2008; //                CLC                     ; Test ADC - Carry 0
+    ram[19] = 16'h0ca1; //                ADC R3 R1 R2
+    ram[20] = 16'h709e; //                LDL R4 Result_Add_1.L
+    ram[21] = 16'h7100; //                LDH R4 Result_Add_1.H
+    ram[22] = 16'hd200; //                LD R4 [R4]
+    ram[23] = 16'h01ce; //                CMP R3 R4
+    ram[24] = 16'h4e80; //                BZC [R5]
+                       //
+    ram[25] = 16'h2009; //                SEC                     ; Test ADC - Carry 1
+    ram[26] = 16'h0ca1; //                ADC R3 R1 R2
+    ram[27] = 16'h709f; //                LDL R4 Result_Add_2.L
+    ram[28] = 16'h7100; //                LDH R4 Result_Add_2.H
+    ram[29] = 16'hd200; //                LD R4 [R4]
+    ram[30] = 16'h01ce; //                CMP R3 R4
+    ram[31] = 16'h4e80; //                BZC [R5]
+                       //
+    ram[32] = 16'h2009; //                SEC                     ; Test SUB
+    ram[33] = 16'h0ca2; //                SUB R3 R1 R2
+    ram[34] = 16'h70a0; //                LDL R4 Result_Sub_1.L
+    ram[35] = 16'h7100; //                LDH R4 Result_Sub_1.H
+    ram[36] = 16'hd200; //                LD R4 [R4]
+    ram[37] = 16'h01ce; //                CMP R3 R4
+    ram[38] = 16'h4e80; //                BZC [R5]
+                       //
+    ram[39] = 16'h2008; //                CLC                     ; Test SBC - Carry 0
+    ram[40] = 16'h0ca3; //                SBC R3 R1 R2
+    ram[41] = 16'h70a0; //                LDL R4 Result_Sub_1.L
+    ram[42] = 16'h7100; //                LDH R4 Result_Sub_1.H
+    ram[43] = 16'hd200; //                LD R4 [R4]
+    ram[44] = 16'h01ce; //                CMP R3 R4
+    ram[45] = 16'h4e80; //                BZC [R5]
+                       //
+    ram[46] = 16'h2009; //                SEC                     ; Test SBC - Carry 1
+    ram[47] = 16'h0ca3; //                SBC R3 R1 R2
+    ram[48] = 16'h70a1; //                LDL R4 Result_Sub_2.L
+    ram[49] = 16'h7100; //                LDH R4 Result_Sub_2.H
+    ram[50] = 16'hd200; //                LD R4 [R4]
+    ram[51] = 16'h01ce; //                CMP R3 R4
+    ram[52] = 16'h4e80; //                BZC [R5]
+                       //
+    ram[53] = 16'h649a; //                LDL R1 Operand1_1.L     ; Test LD
+    ram[54] = 16'h6500; //                LDH R1 Operand1_1.H
+    ram[55] = 16'hc480; //                LD R1 [R1]
+    ram[56] = 16'h0888; //                LD R2 R1
+    ram[57] = 16'h709a; //                LDL R4 Operand1_1.L
+    ram[58] = 16'h7100; //                LDH R4 Operand1_1.H
+    ram[59] = 16'hd200; //                LD R4 [R4]
+    ram[60] = 16'h014e; //                CMP R2 R4
+    ram[61] = 16'h4e80; //                BZC [R5]
+                       //
+    ram[62] = 16'h649c; //                LDL R1 Operand1_2.L     ; Test LDL
+    ram[63] = 16'h6500; //                LDH R1 Operand1_2.H
+    ram[64] = 16'hc480; //                LD R1 [R1]
+    ram[65] = 16'h689d; //                LDL R2 Operand2_2.L
+    ram[66] = 16'h6900; //                LDH R2 Operand2_2.H
+    ram[67] = 16'hc900; //                LD R2 [R2]
+    ram[68] = 16'h0509; //                LDL R1 R2
+    ram[69] = 16'h70a2; //                LDL R4 Result_Ldl_1.L
+    ram[70] = 16'h7100; //                LDH R4 Result_Ldl_1.H
+    ram[71] = 16'hd200; //                LD R4 [R4]
+    ram[72] = 16'h00ce; //                CMP R1 R4
+    ram[73] = 16'h4e80; //                BZC [R5]
+                       //
+    ram[74] = 16'h649c; //                LDL R1 Operand1_2.L     ; Test LDH
+    ram[75] = 16'h6500; //                LDH R1 Operand1_2.H
+    ram[76] = 16'hc480; //                LD R1 [R1]
+    ram[77] = 16'h689d; //                LDL R2 Operand2_2.L
+    ram[78] = 16'h6900; //                LDH R2 Operand2_2.H
+    ram[79] = 16'hc900; //                LD R2 [R2]
+    ram[80] = 16'h050a; //                LDH R1 R2
+    ram[81] = 16'h70a3; //                LDL R4 Result_Ldh_1.L
+    ram[82] = 16'h7100; //                LDH R4 Result_Ldh_1.H
+    ram[83] = 16'hd200; //                LD R4 [R4]
+    ram[84] = 16'h00ce; //                CMP R1 R4
+    ram[85] = 16'h4e80; //                BZC [R5]
+                       //
+    ram[86] = 16'h649c; //                LDL R1 Operand1_2.L     ; Test LDL imm
+    ram[87] = 16'h6500; //                LDH R1 Operand1_2.H
+    ram[88] = 16'hc480; //                LD R1 [R1]
+    ram[89] = 16'h6412; //                LDL R1 0x12
+    ram[90] = 16'h70a2; //                LDL R4 Result_Ldl_1.L
+    ram[91] = 16'h7100; //                LDH R4 Result_Ldl_1.H
+    ram[92] = 16'hd200; //                LD R4 [R4]
+    ram[93] = 16'h00ce; //                CMP R1 R4
+    ram[94] = 16'h4e80; //                BZC [R5]
+                       //
+    ram[95] = 16'h649c; //                LDL R1 Operand1_2.L     ; Test LDH imm
+    ram[96] = 16'h6500; //                LDH R1 Operand1_2.H
+    ram[97] = 16'hc480; //                LD R1 [R1]
+    ram[98] = 16'h6512; //                LDH R1 0x12
+    ram[99] = 16'h70a3; //                LDL R4 Result_Ldh_1.L
+    ram[100] = 16'h7100; //                LDH R4 Result_Ldh_1.H
+    ram[101] = 16'hd200; //                LD R4 [R4]
+    ram[102] = 16'h00ce; //                CMP R1 R4
+    ram[103] = 16'h4e80; //                BZC [R5]
+                       //
+    ram[104] = 16'h66ab; //                LDLZ R1 0xAB            ; Test LDLZ imm
+    ram[105] = 16'h70a4; //                LDL R4 Result_Ldlz_1.L
+    ram[106] = 16'h7100; //                LDH R4 Result_Ldlz_1.H
+    ram[107] = 16'hd200; //                LD R4 [R4]
+    ram[108] = 16'h00ce; //                CMP R1 R4
+    ram[109] = 16'h4e80; //                BZC [R5]
+                       //
+    ram[110] = 16'h67ba; //                LDHZ R1 0xBA            ; Test LDHZ imm
+    ram[111] = 16'h70a5; //                LDL R4 Result_Ldhz_1.L
+    ram[112] = 16'h7100; //                LDH R4 Result_Ldhz_1.H
+    ram[113] = 16'hd200; //                LD R4 [R4]
+    ram[114] = 16'h00ce; //                CMP R1 R4
+    ram[115] = 16'h4e80; //                BZC [R5]
+                       //
+    ram[116] = 16'h649c; //                LDL R1 Operand1_2.L     ; Test SWP
+    ram[117] = 16'h6500; //                LDH R1 Operand1_2.H
+    ram[118] = 16'hc480; //                LD R1 [R1]
+    ram[119] = 16'h048b; //                SWP R1 R1
+    ram[120] = 16'h70a6; //                LDL R4 Result_Swp_1.L
+    ram[121] = 16'h7100; //                LDH R4 Result_Swp_1.H
+    ram[122] = 16'hd200; //                LD R4 [R4]
+    ram[123] = 16'h00ce; //                CMP R1 R4
+    ram[124] = 16'h4e80; //                BZC [R5]
+                       //
+    ram[125] = 16'h649c; //                LDL R1 Operand1_2.L     ; Test INC
+    ram[126] = 16'h6500; //                LDH R1 Operand1_2.H
+    ram[127] = 16'hc480; //                LD R1 [R1]
+    ram[128] = 16'h048c; //                INC R1 R1
+    ram[129] = 16'h70a7; //                LDL R4 Result_Inc_1.L
+    ram[130] = 16'h7100; //                LDH R4 Result_Inc_1.H
+    ram[131] = 16'hd200; //                LD R4 [R4]
+    ram[132] = 16'h00ce; //                CMP R1 R4
+    ram[133] = 16'h4e80; //                BZC [R5]
+                       //
+    ram[134] = 16'h649c; //                LDL R1 Operand1_2.L     ; Test DEC
+    ram[135] = 16'h6500; //                LDH R1 Operand1_2.H
+    ram[136] = 16'hc480; //                LD R1 [R1]
+    ram[137] = 16'h048f; //                DEC R1 R1
+    ram[138] = 16'h70a8; //                LDL R4 Result_Dec_1.L
+    ram[139] = 16'h7100; //                LDH R4 Result_Dec_1.H
+    ram[140] = 16'hd200; //                LD R4 [R4]
+    ram[141] = 16'h00ce; //                CMP R1 R4
+    ram[142] = 16'h4e80; //                BZC [R5]
+                       //
+                       //
+                       //                ; Test succeeded
+    ram[143] = 16'h7002; //                LDL R4 TestOk.L
+    ram[144] = 16'h7100; //                LDH R4 TestOk.H
+    ram[145] = 16'h7434; //                LDL R5 0x34
+    ram[146] = 16'h7512; //                LDH R5 0x12
+    ram[147] = 16'hf600; //                STO R5 [R4]
+    ram[148] = 16'h9fff; //                HLT
+                       //
+    ram[149] = 16'h7002; //                LDL R4 TestOk.L
+    ram[150] = 16'h7100; //                LDH R4 TestOk.H
+    ram[151] = 16'h7600; //                LDLZ R5 0
+    ram[152] = 16'hf600; //                STO R5 [R4]
+    ram[153] = 16'h9fff; //                HLT
+                       //
+    ram[154] = 16'h0064; // .data 100
+    ram[155] = 16'h000d; // .data 13
+    ram[156] = 16'hfedc; // .data 0xFEDC
+    ram[157] = 16'h0012; // .data 0x12
+    ram[158] = 16'h0071; // .data 100 + 13
+    ram[159] = 16'h0072; // .data 100 + 13 + 1
+    ram[160] = 16'h0057; // .data 100 - 13
+    ram[161] = 16'h0056; // .data 100 - 13 - 1
+    ram[162] = 16'hfe12; // .data 0xFE12
+    ram[163] = 16'h12dc; // .data 0x12DC
+    ram[164] = 16'h00ab; // .data 0x00AB
+    ram[165] = 16'hba00; // .data 0xBA00
+    ram[166] = 16'hdcfe; // .data 0xDCFE
+    ram[167] = 16'hfedd; // .data 0xFEDC + 1
+    ram[168] = 16'hfedb; // .data 0xFEDC - 1
 
+    ram[`CTRL_SWITCHES] = `NONE;
+    repeat (5) @(posedge clk);
 
+    ram[`CTRL_SWITCHES] = `START;
+    ram[`ADDR_SWITCHES] = 0;
+    repeat (700) @(posedge clk);
+    if (ram[`ADDR_LEDS] != 149 ||
+        ram[`DATA_LEDS] != 16'h7002 ||
+        ram[2] != 16'h1234)
+      begin
+        $error("ERROR: START - : ADDR=%04X, DATA=%04X", ram[`ADDR_LEDS], ram[`DATA_LEDS]);
+        $finish;
+      end
+    $display("All tests passed!");
 
     $finish;
 end
