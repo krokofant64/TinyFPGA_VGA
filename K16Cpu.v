@@ -356,6 +356,9 @@ module K16Cpu(clk, reset, stop, hold, busy,
                         state <= PANEL_FETCH_DATA;
                       end
                   end
+                16'b1001111111111111:
+                  begin
+                  end
                 16'b101?????????????:
                   begin
                     $display("DECODE_INSTR - JSR");

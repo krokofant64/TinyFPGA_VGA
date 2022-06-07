@@ -1,4 +1,5 @@
 `include "K16Cpu.v"
+`include "K16Io.v"
 
 `timescale 1 ns/10 ps  // time-unit = 1 ns, precision = 10 ps
 
@@ -30,16 +31,18 @@ wire cOut;
 wire zOut;
 wire nOut;
 
-K16Alu alu(.operand1(a),
-           .operand2(b),
-           .carryIn(c),
-           .operationType(operationType),
-           .operation(operation),
-           .result(r),
-           .carryOut(cOut),
-           .zeroOut(zOut),
-           .negativeOut(nOut));
-
+reg [2:0]   io_addr_in;
+reg [15:0]  io_din;
+reg         io_write_en;
+wire [15:0] io_dout;
+wire        io_stop;
+wire        io_reset;
+wire [3:0]  io_leds;
+wire        io_clk_out;
+wire [2:0]  io_addr_out;
+reg  [3:0]  io_switches;
+reg  [2:0]  io_reg_switches;
+wire        io_sound;
 
 K16Cpu cpu(
   .clk(clk),
@@ -51,6 +54,31 @@ K16Cpu cpu(
   .data_in(data_in),
   .data_out(data_out),
   .write(write));
+
+K16Alu alu(.operand1(a),
+           .operand2(b),
+           .carryIn(c),
+           .operationType(operationType),
+           .operation(operation),
+           .result(r),
+           .carryOut(cOut),
+           .zeroOut(zOut),
+           .negativeOut(nOut));
+
+K16Io io(
+   .din(io_din),
+   .addr(io_addr_in),
+   .write_en(io_write_en),
+   .clk(clk),
+   .dout(io_dout),
+   .stop(io_stop),
+   .reset(io_reset),
+   .io_leds(io_leds),
+   .io_clk(io_clk_out),
+   .io_addr(io_addr_out),
+   .io_switches(io_switches),
+   .io_reg_switches(io_reg_switches),
+   .sound(io_sound));
 
   reg [15:0] ram[0:65535];
 
@@ -64,7 +92,7 @@ K16Cpu cpu(
 
   initial begin
     $dumpfile("K16Cpu_tb.vcd");
-    $dumpvars(1, cpu);
+    $dumpvars(1, cpu, io);
 
     ram[0] = 16'h7b01; //                LDHZ SP 0x01 ; Set SP to 0x0100
     ram[1] = 16'h7300; // Start:         LDHZ R4 0x00
@@ -786,6 +814,45 @@ K16Cpu cpu(
         $error("ERROR: START - : ADDR=%04X, DATA=%04X", ram[`ADDR_LEDS], ram[`DATA_LEDS]);
         $finish;
       end
+      /*
+      .din(io_din),
+      .addr(io_addr_in),
+      .write_en(io_write_en),
+      .clk(clk),
+      .dout(io_dout),
+      .stop(io_stop),
+      .reset(io_reset),
+      .io_leds(io_leds),
+      .io_clk(io_clk_out),
+      .io_addr(io_addr_out),
+      .io_switches(io_switches),
+      .io_reg_switches(io_reg_switches),
+      .sound(io_sound)); */
+
+
+    io_din = 16'h1234;
+    io_addr_in = 2;
+    io_write_en = 1;
+
+    repeat (5) @(posedge clk);
+
+    io_write_en = 0;
+
+    repeat (5) @(posedge clk);
+
+    io_din = 16'hFEDC;
+    io_addr_in = 3;
+    io_write_en = 1;
+
+    repeat (5) @(posedge clk);
+    io_write_en = 0;
+
+    repeat (5) @(posedge clk);
+    repeat (25000000 / 50 *4)  @(posedge clk);
+
+
+
+
     $display("All tests passed!");
 
     $finish;
