@@ -22,9 +22,9 @@
 `define DEPOSIT_NEXT      8
 `define DEPOSIT_REGISTER  9
 
+
 module K16Cpu(clk, reset, stop, hold, busy,
              address, data_in, data_out, write);
-
   input              clk;
   input              reset;
   input              stop;
@@ -34,24 +34,6 @@ module K16Cpu(clk, reset, stop, hold, busy,
   input  [15:0]      data_in;
   output reg [15:0]  data_out;
   output reg         write;
-
-  // 8 16-bit registers
-  reg [15:0] register[0:7];
-
-  localparam SP = 6; // SP in register 6
-  localparam PC = 7; // PC in register 7
-
-  reg [2:0] destReg;
-
-  // Flags
-  reg carry;
-  reg negative;
-  reg zero;
-  reg overflow;
-  reg enableInterrupt;
-
-  // CPU state
-  reg [5:0] state = RESET;
 
   // CPU states
   localparam RESET   = 0;
@@ -93,6 +75,24 @@ module K16Cpu(clk, reset, stop, hold, busy,
   localparam PANEL_WAIT_CTRL_SWITCHES = 35;
   localparam PANEL_EXAMINE_SET_ADDR = 36;
 
+  // 8 16-bit registers
+  reg [15:0] register[0:7];
+
+  localparam SP = 6; // SP in register 6
+  localparam PC = 7; // PC in register 7
+
+  reg [2:0] destReg;
+
+  // Flags
+  reg carry;
+  reg negative;
+  reg zero;
+  reg overflow;
+  reg enableInterrupt;
+
+  // CPU state
+  reg [5:0] state = RESET;
+
   reg [15:0]  operand1;
   reg [15:0]  operand2;
   wire [15:0] result;
@@ -130,7 +130,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
       begin
         $display("Stop");
         busy <= 0;
-        running <= 0;
+        running <= 1;
         key_valid <= 1;
       end
     else
@@ -151,7 +151,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
              carry <= 0;
              zero <= 0;
              negative <= 0;
-             running <= 0;
+             running <= 1;
              state <= FETCH_INSTR;
            end
          FETCH_INSTR:

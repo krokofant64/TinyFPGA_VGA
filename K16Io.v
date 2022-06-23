@@ -14,7 +14,7 @@ module K16Io(din, addr, write_en, clk, dout, stop, reset, io_leds, io_clk, io_ad
   output reg [2:0]  io_addr = 0;
   input  [3:0]      io_switches;
   input  [2:0]      io_reg_switches;
-  output reg        sound;
+  output reg        sound = 0;
 
   reg [15:0] addr_leds = 0;
   reg [15:0] data_leds = 0;
@@ -22,14 +22,24 @@ module K16Io(din, addr, write_en, clk, dout, stop, reset, io_leds, io_clk, io_ad
   reg [15:0] ctrl_switches = 0;
   reg [2:0]  reg_switches = 0;
   reg [31:0] counter = 0;
+  reg [15:0] sound_divisor = 0;
+  reg [19:0] io_clck_counter = 0;
+  reg [21:0] sound_counter = 0;
 
   localparam DIVISOR = 25000000 / 50;
   always @(posedge clk)
     begin
-       counter <= counter + 32'd1;
-       if (counter >= (DIVISOR - 1))
-         counter <= 32'd0;
-       io_clk <= (counter < DIVISOR / 2) ? 1'b1 : 1'b0;
+       counter <= counter + 1;
+       io_clck_counter <= io_clck_counter + 20'd1;
+       sound_counter <= sound_counter + 26'd1;
+       if (io_clck_counter >= (DIVISOR - 1))
+         io_clck_counter <= 32'd0;
+       io_clk <= (io_clck_counter < DIVISOR / 2) ? 1'b1 : 1'b0;
+       if (sound_divisor != 0 && sound_counter >= {sound_divisor, 5'b0})
+         begin
+           sound_counter <= 26'd0;
+           sound = ~sound;
+        end
     end
 
   always @(posedge io_clk)
@@ -54,10 +64,10 @@ module K16Io(din, addr, write_en, clk, dout, stop, reset, io_leds, io_clk, io_ad
   always @(posedge io_clk)
     begin
       case (io_addr)
-        0: addr_switches[3:0]   <= ~io_switches;
-        1: addr_switches[7:4]   <= ~io_switches;
-        2: addr_switches[11:8]  <= ~io_switches;
-        3: addr_switches[15:12] <= ~io_switches;
+        0: addr_switches[3:0]   <= io_switches;
+        1: addr_switches[7:4]   <= io_switches;
+        2: addr_switches[11:8]  <= io_switches;
+        3: addr_switches[15:12] <= io_switches;
         4: ctrl_switches[3:0]   <= ~io_switches;
         5: ctrl_switches[7:4]   <= ~io_switches;
         6: ctrl_switches[11:8]  <= ~io_switches;
@@ -69,7 +79,6 @@ always @(posedge io_clk)
   begin
     stop <= ctrl_switches[2];
     reset <= ctrl_switches[3];
-    sound <= 0;
   end
 
  always @(posedge io_clk)
@@ -166,8 +175,13 @@ always @(posedge io_clk)
           end
         3'h7:
           begin
-            $display("Read ERROR");
-            dout <= 16'hEAEA;
+            $display("Read SOUND_DIVISOR");
+            if (write_en)
+              begin
+                $display("Write SOUND_DIVISOR");
+                sound_divisor <= din;
+              end;
+            dout <= sound_divisor;
           end
       endcase
     end

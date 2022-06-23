@@ -847,6 +847,13 @@ K16Io io(
     repeat (5) @(posedge clk);
     io_write_en = 0;
 
+    io_din = 16'h001F;
+    io_addr_in = 7;
+    io_write_en = 1;
+
+    repeat (5) @(posedge clk);
+    io_write_en = 0;
+
     repeat (5) @(posedge clk);
     repeat (25000000 / 50 *4)  @(posedge clk);
 
