@@ -130,7 +130,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
       begin
         $display("Stop");
         busy <= 0;
-        running <= 1;
+        running <= 0;
         key_valid <= 1;
       end
     else
@@ -151,7 +151,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
              carry <= 0;
              zero <= 0;
              negative <= 0;
-             running <= 1;
+             running <= 0;
              state <= FETCH_INSTR;
            end
          FETCH_INSTR:
