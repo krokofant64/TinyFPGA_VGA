@@ -855,7 +855,7 @@ K16Io io(
     io_write_en = 0;
 
     repeat (5) @(posedge clk);
-    repeat (25000000 / 50 *4)  @(posedge clk);
+//repeat (25000000 / 50 *4)  @(posedge clk);
 
 
 

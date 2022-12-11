@@ -24,7 +24,10 @@ module K16Computer(clk_16,
             sw_reg3,
             sw_reg2,
             sw_reg1,
-            sound);
+            sound,
+            statusR,
+            statusG,
+            statusB);
 
   input clk_16;
   output vga_h_sync;
@@ -48,6 +51,9 @@ module K16Computer(clk_16,
   input sw_reg2;
   input sw_reg1;
   output sound;
+  output statusR;
+  output statusG;
+  output statusB;
 
   reg  [10:0] frame_buffer_waddr_bus;
   wire [10:0] frame_buffer_raddr_bus;
@@ -139,7 +145,10 @@ module K16Computer(clk_16,
     .address(cpu_addr_bus),
     .data_in(cpu_din_bus),
     .data_out(cpu_dout_bus),
-    .write(cpu_write));
+    .write(cpu_write),
+    .statusR(statusR),
+    .statusG(statusG),
+    .statusB(statusB));
 
   always @(*)
     begin

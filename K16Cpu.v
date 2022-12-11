@@ -24,7 +24,7 @@
 
 
 module K16Cpu(clk, reset, stop, hold, busy,
-             address, data_in, data_out, write);
+             address, data_in, data_out, write, statusR, statusG, statusB);
   input              clk;
   input              reset;
   input              stop;
@@ -34,6 +34,9 @@ module K16Cpu(clk, reset, stop, hold, busy,
   input  [15:0]      data_in;
   output reg [15:0]  data_out;
   output reg         write;
+  output reg         statusR;
+  output reg         statusG;
+  output reg         statusB;
 
   // CPU states
   localparam RESET   = 0;
@@ -98,7 +101,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
   wire [15:0] result;
   reg [2:0]   operation;
   reg [1:0]   operationType;
-  reg         running;
+  reg         running = 1;
   wire        carryOut;
   wire        zeroOut;
   wire        negativeOut;
@@ -122,7 +125,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
         $display("Reset");
         state <= RESET;
         busy <= 0;
-        running <= 0;
+        running <= 1;
         key_valid <= 1;
       end
     else
@@ -130,11 +133,23 @@ module K16Cpu(clk, reset, stop, hold, busy,
       begin
         $display("Stop");
         busy <= 0;
-        running <= 0;
+        running <= 1;
         key_valid <= 1;
       end
     else
     begin
+      if (running)
+        begin
+          statusR <= 0;
+          statusG <= 1;
+          statusB <= 0;
+        end
+      else
+        begin
+          statusR <= 1;
+          statusG <= 0;
+          statusB <= 0;
+        end
        case (state)
          RESET:
            begin
@@ -151,7 +166,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
              carry <= 0;
              zero <= 0;
              negative <= 0;
-             running <= 0;
+             running <= 1;
              state <= FETCH_INSTR;
            end
          FETCH_INSTR:
