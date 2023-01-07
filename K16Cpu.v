@@ -4,11 +4,11 @@
 `include "K16Alu.v"
 
 //
-`define ADDR_SWITCHES 16'hFFF8
-`define CTRL_SWITCHES 16'hFFF9
-`define ADDR_LEDS     16'hFFFA
-`define DATA_LEDS     16'hFFFB
-`define REG_SWITCHES  16'hFFFC
+`define ADDR_SWITCHES        16'hFFF8
+`define CTRL_SWITCHES        16'hFFF9
+`define ADDR_LEDS            16'hFFFA
+`define DATA_LEDS            16'hFFFB
+`define CMD_AND_REG_SWITCHES 16'hFFFC
 
 //
 `define NONE              0
@@ -101,7 +101,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
   wire [15:0] result;
   reg [2:0]   operation;
   reg [1:0]   operationType;
-  reg         running = 1;
+  reg         running = 0;
   wire        carryOut;
   wire        zeroOut;
   wire        negativeOut;
@@ -125,7 +125,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
         $display("Reset");
         state <= RESET;
         busy <= 0;
-        running <= 1;
+        running <= 0;
         key_valid <= 1;
       end
     else
@@ -133,7 +133,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
       begin
         $display("Stop");
         busy <= 0;
-        running <= 1;
+        running <= 0;
         key_valid <= 1;
       end
     else
@@ -166,7 +166,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
              carry <= 0;
              zero <= 0;
              negative <= 0;
-             running <= 1;
+             running <= 0;
              state <= FETCH_INSTR;
            end
          FETCH_INSTR:
@@ -519,7 +519,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
         STOPPED:
           begin
             write <= 0;
-            address <= `CTRL_SWITCHES;
+            address <= `CMD_AND_REG_SWITCHES;
             state <= PANEL_WAIT_CTRL_SWITCHES;
             $display("STOPPED");
           end
@@ -532,7 +532,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
         PANEL_DECODE_CTRL_SWITCHES:
           begin
             $display("PANEL_DECODE_CTRL_SWITCHES data_in: %04X, key_valid: %d", data_in, key_valid);
-            if (key_valid && data_in[3:0] == `START)
+            if (key_valid && data_in[6:3] == `START)
               begin
                 $display("*****************");
                 $display("* START PRESSED *");
@@ -542,7 +542,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
                 key_valid <= 0;
                 state <= PANEL_START_WAIT_ADDR;
               end
-            else if (key_valid && data_in[3:0] == `CONTINUE)
+            else if (key_valid && data_in[6:3] == `CONTINUE)
               begin
                 $display("********************");
                 $display("* CONTINUE PRESSED *");
@@ -557,7 +557,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
                 key_valid <= 0;
                 state <= WAIT_INSTR;
               end
-            else if (key_valid && data_in[3:0] == `INST_STEP)
+            else if (key_valid && data_in[6:3] == `INST_STEP)
               begin
                 $display("*********************");
                 $display("* INST_STEP PRESSED *");
@@ -571,7 +571,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
                 key_valid <= 0;
                 state <= WAIT_INSTR;
               end
-            else if (key_valid && data_in[3:0] == `EXAMINE)
+            else if (key_valid && data_in[6:3] == `EXAMINE)
               begin
                 $display("*******************");
                 $display("* EXAMINE PRESSED *");
@@ -581,7 +581,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
                 key_valid <= 0;
                 state <= PANEL_EXAMINE_WAIT_ADDR;
               end
-            else if (key_valid && data_in[3:0] == `EXAMINE_NEXT)
+            else if (key_valid && data_in[6:3] == `EXAMINE_NEXT)
               begin
                 $display("************************");
                 $display("* EXAMINE_NEXT PRESSED *");
@@ -594,17 +594,17 @@ module K16Cpu(clk, reset, stop, hold, busy,
                 key_valid <= 0;
                 state <= PANEL_EXAMINE_WAIT_NEXT;
               end
-            else if (key_valid && data_in[3:0] == `EXAMINE_REGISTER)
+            else if (key_valid && data_in[6:3] == `EXAMINE_REGISTER)
               begin
                 $display("****************************");
                 $display("* EXAMINE_REGISTER PRESSED *");
                 $display("****************************");
                 write <= 0;
-                address <= `REG_SWITCHES;
+                address <= `CMD_AND_REG_SWITCHES;
                 key_valid <= 0;
                 state <= PANEL_EXAMINE_REG_WAIT_REG;
               end
-            else if (key_valid && data_in[3:0] == `DEPOSIT)
+            else if (key_valid && data_in[6:3] == `DEPOSIT)
               begin
                 $display("*******************");
                 $display("* DEPOSIT PRESSED *");
@@ -614,7 +614,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
                 key_valid <= 0;
                 state <= PANEL_DEPOSIT_WAIT_DATA;
               end
-            else if (key_valid && data_in[3:0] == `DEPOSIT_NEXT)
+            else if (key_valid && data_in[6:3] == `DEPOSIT_NEXT)
               begin
                 $display("************************");
                 $display("* DEPOSIT_NEXT PRESSED *");
@@ -628,19 +628,19 @@ module K16Cpu(clk, reset, stop, hold, busy,
                 key_valid <= 0;
                 state <= PANEL_DEPOSIT_WAIT_NEXT;
               end
-            else if (key_valid && data_in[3:0] == `DEPOSIT_REGISTER)
+            else if (key_valid && data_in[6:3] == `DEPOSIT_REGISTER)
               begin
                 $display("****************************");
                 $display("* DEPOSIT_REGISTER PRESSED *");
                 $display("****************************");
                 write <= 0;
-                address <= `REG_SWITCHES;
+                address <= `CMD_AND_REG_SWITCHES;
                 key_valid <= 0;
                 state <= PANEL_DEPOSIT_REG_WAIT_REG;
               end
             else
               begin
-                key_valid <= (data_in[3:0] == `NONE);
+                key_valid <= (data_in[6:3] == `NONE);
                 state <= STOPPED;
               end
           end

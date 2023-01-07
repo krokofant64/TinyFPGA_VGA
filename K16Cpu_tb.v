@@ -192,12 +192,13 @@ K16Io io(
     ram[103] = 16'h0000;
     ram[104] = 16'h0000;
 
-    ram[`ADDR_SWITCHES] = 16'h0000;
-    ram[`CTRL_SWITCHES] = 16'h0000;
-    ram[`ADDR_LEDS] = 16'h0000;
-    ram[`DATA_LEDS] = 16'h0000;
-    ram[16'hFFFD] = 16'h0000;
-    ram[16'hFFFE] = 16'h0000;
+    ram[`ADDR_SWITCHES]        = 16'h0000;
+    ram[`CTRL_SWITCHES]        = 16'h0000;
+    ram[`ADDR_LEDS]            = 16'h0000;
+    ram[`DATA_LEDS]            = 16'h0000;
+    ram[`CMD_AND_REG_SWITCHES] = 16'h0000;
+    ram[16'hFFFD]              = 16'h0000;
+    ram[16'hFFFE]              = 16'h0000;
 
     //$monitor(".  clk=%b, reset=%b, hold=%b, busy=%b, address=%04X, data_in=%04X, data_out=%04X, write=%b", clk, reset, hold, busy, address, data_in, data_out, write);
 
@@ -464,10 +465,10 @@ K16Io io(
     #10
     repeat (5) @(posedge clk);
 
-    ram[`CTRL_SWITCHES] = `NONE;
+    ram[`CMD_AND_REG_SWITCHES] = `NONE << 3;
     repeat (5) @(posedge clk);
 
-    ram[`CTRL_SWITCHES] = `INST_STEP;
+    ram[`CMD_AND_REG_SWITCHES] = `INST_STEP << 3;
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 16'h0001 ||
         ram[`DATA_LEDS] != 16'h7300)
@@ -476,10 +477,10 @@ K16Io io(
         $finish;
       end
 
-    ram[`CTRL_SWITCHES] = `NONE;
+    ram[`CMD_AND_REG_SWITCHES] = `NONE << 3;
     repeat (5) @(posedge clk);
 
-    ram[`CTRL_SWITCHES] = `EXAMINE;
+    ram[`CMD_AND_REG_SWITCHES] = `EXAMINE << 3;
     ram[`ADDR_SWITCHES] = 16'h0001;
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 16'h0001 ||
@@ -489,10 +490,10 @@ K16Io io(
         $finish;
       end;
 
-    ram[`CTRL_SWITCHES] = `NONE;
+    ram[`CMD_AND_REG_SWITCHES] = `NONE << 3;
     repeat (5) @(posedge clk);
 
-    ram[`CTRL_SWITCHES] = `EXAMINE_NEXT;
+    ram[`CMD_AND_REG_SWITCHES] = `EXAMINE_NEXT << 3;
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 16'h0002 ||
         ram[`DATA_LEDS] != 16'h6dff)
@@ -501,10 +502,10 @@ K16Io io(
         $finish;
       end;
 
-    ram[`CTRL_SWITCHES] = `NONE;
+    ram[`CMD_AND_REG_SWITCHES] = `NONE << 3;
     repeat (5) @(posedge clk);
 
-    ram[`CTRL_SWITCHES] = `EXAMINE_NEXT;
+    ram[`CMD_AND_REG_SWITCHES] = `EXAMINE_NEXT << 3;
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 16'h0003 ||
         ram[`DATA_LEDS] != 16'h6cfd)
@@ -513,10 +514,10 @@ K16Io io(
         $finish;
       end
 
-    ram[`CTRL_SWITCHES] = `NONE;
+    ram[`CMD_AND_REG_SWITCHES] = `NONE << 3;
     repeat (5) @(posedge clk);
 
-    ram[`CTRL_SWITCHES] = `EXAMINE;
+    ram[`CMD_AND_REG_SWITCHES] = `EXAMINE << 3;
     ram[`ADDR_SWITCHES] = 100;
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 100 ||
@@ -526,10 +527,10 @@ K16Io io(
         $finish;
       end
 
-    ram[`CTRL_SWITCHES] = `NONE;
+    ram[`CMD_AND_REG_SWITCHES] = `NONE << 3;
     repeat (5) @(posedge clk);
 
-    ram[`CTRL_SWITCHES] = `DEPOSIT;
+    ram[`CMD_AND_REG_SWITCHES] = `DEPOSIT << 3;
     ram[`ADDR_SWITCHES] = 16'h1234;
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 100 ||
@@ -540,10 +541,10 @@ K16Io io(
         $finish;
       end
 
-    ram[`CTRL_SWITCHES] = `NONE;
+    ram[`CMD_AND_REG_SWITCHES] = `NONE << 3;
     repeat (5) @(posedge clk);
 
-    ram[`CTRL_SWITCHES] = `DEPOSIT_NEXT;
+    ram[`CMD_AND_REG_SWITCHES] = `DEPOSIT_NEXT << 3;
     ram[`ADDR_SWITCHES] = 16'hABCD;
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 101 ||
@@ -555,11 +556,10 @@ K16Io io(
          $finish;
        end
 
-    ram[`CTRL_SWITCHES] = `NONE;
+    ram[`CMD_AND_REG_SWITCHES] = `NONE << 3;
     repeat (5) @(posedge clk);
 
-    ram[`REG_SWITCHES] = 7;
-    ram[`CTRL_SWITCHES] = `EXAMINE_REGISTER;
+    ram[`CMD_AND_REG_SWITCHES] = `EXAMINE_REGISTER << 3 | 7;
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 101 ||
         ram[`DATA_LEDS] != 101)
@@ -568,12 +568,11 @@ K16Io io(
         $finish;
       end
 
-    ram[`CTRL_SWITCHES] = `NONE;
+    ram[`CMD_AND_REG_SWITCHES] = `NONE << 3;
     repeat (5) @(posedge clk);
 
-    ram[`REG_SWITCHES] = 0;
     ram[`ADDR_SWITCHES] = 16'hBABE;
-    ram[`CTRL_SWITCHES] = `DEPOSIT_REGISTER;
+    ram[`CMD_AND_REG_SWITCHES] = `DEPOSIT_REGISTER << 3 | 0;
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 101 ||
         ram[`DATA_LEDS] != 16'hBABE)
@@ -582,11 +581,10 @@ K16Io io(
         $finish;
       end
 
-    ram[`CTRL_SWITCHES] = `NONE;
+    ram[`CMD_AND_REG_SWITCHES] = `NONE << 3;
     repeat (5) @(posedge clk);
 
-    ram[`REG_SWITCHES] = 7;
-    ram[`CTRL_SWITCHES] = `EXAMINE_REGISTER;
+    ram[`CMD_AND_REG_SWITCHES] = `EXAMINE_REGISTER << 3 | 7;
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 101 ||
        ram[`DATA_LEDS] != 101)
@@ -595,11 +593,10 @@ K16Io io(
         $finish;
       end
 
-    ram[`CTRL_SWITCHES] = `NONE;
+    ram[`CMD_AND_REG_SWITCHES] = `NONE << 3;
     repeat (5) @(posedge clk);
 
-    ram[`REG_SWITCHES] = 0;
-    ram[`CTRL_SWITCHES] = `EXAMINE_REGISTER;
+    ram[`CMD_AND_REG_SWITCHES] = `EXAMINE_REGISTER << 3 | 0;
     repeat (20) @(posedge clk);
     if (ram[`ADDR_LEDS] != 101 ||
        ram[`DATA_LEDS] != 16'hBABE)
@@ -801,10 +798,10 @@ K16Io io(
     ram[167] = 16'hfedd; // .data 0xFEDC + 1
     ram[168] = 16'hfedb; // .data 0xFEDC - 1
 
-    ram[`CTRL_SWITCHES] = `NONE;
+    ram[`CMD_AND_REG_SWITCHES] = `NONE << 3;
     repeat (5) @(posedge clk);
 
-    ram[`CTRL_SWITCHES] = `START;
+    ram[`CMD_AND_REG_SWITCHES] = `START << 3;
     ram[`ADDR_SWITCHES] = 0;
     repeat (700) @(posedge clk);
     if (ram[`ADDR_LEDS] != 149 ||

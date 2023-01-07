@@ -20,7 +20,7 @@ module K16Io(din, addr, write_en, clk, dout, stop, reset, io_leds, io_clk, io_ad
   reg [15:0] data_leds = 0;
   reg [15:0] addr_switches = 0;
   reg [15:0] ctrl_switches = 0;
-  reg [2:0]  reg_switches = 0;
+  reg [15:0] cmd_and_reg_switches = 0;
   reg [31:0] counter = 0;
   reg [15:0] sound_divisor = 0;
   reg [19:0] io_clck_counter = 0;
@@ -83,7 +83,48 @@ always @(posedge io_clk)
 
  always @(posedge io_clk)
    begin
-     reg_switches <= io_reg_switches;
+     if (ctrl_switches[0])
+       begin
+         cmd_and_reg_switches <= `EXAMINE_REGISTER << 3 | io_reg_switches;
+       end
+     else if (ctrl_switches[1])
+       begin
+         cmd_and_reg_switches <= `DEPOSIT_REGISTER << 3 | io_reg_switches;
+       end
+     else if (ctrl_switches[4])
+       begin
+         cmd_and_reg_switches <= `CONTINUE << 3 | io_reg_switches;
+       end
+     else if (ctrl_switches[5])
+       begin
+         cmd_and_reg_switches <= `START << 3 | io_reg_switches;
+       end
+     else if (ctrl_switches[6])
+       begin
+         cmd_and_reg_switches <= `DEPOSIT_NEXT << 3 | io_reg_switches;
+       end
+     else if (ctrl_switches[7])
+       begin
+         cmd_and_reg_switches <= `DEPOSIT << 3 | io_reg_switches;
+       end
+     else if (ctrl_switches[8])
+       begin
+         cmd_and_reg_switches <= `EXAMINE_NEXT << 3 | io_reg_switches;
+       end
+     else if (ctrl_switches[9])
+       begin
+         cmd_and_reg_switches <= `EXAMINE << 3 | io_reg_switches;
+       end
+     else if (ctrl_switches[10])
+       begin
+         cmd_and_reg_switches <= `INST_STEP << 3 | io_reg_switches;
+       end
+     else
+       begin
+         cmd_and_reg_switches <= `NONE << 3 | io_reg_switches;
+       end
+
+
    end
 
   always @(posedge clk)
@@ -97,46 +138,7 @@ always @(posedge io_clk)
         3'h1: // CTRL_SWITCHES
           begin
             $display("Read CTRL_SWITCHES");
-            if (ctrl_switches[0])
-              begin
-                dout <= `EXAMINE_REGISTER;
-              end
-            else if (ctrl_switches[1])
-              begin
-                dout <= `DEPOSIT_REGISTER;
-              end
-            else if (ctrl_switches[4])
-              begin
-                dout <= `CONTINUE;
-              end
-            else if (ctrl_switches[5])
-              begin
-                dout <= `START;
-              end
-            else if (ctrl_switches[6])
-              begin
-                dout <= `DEPOSIT_NEXT;
-              end
-            else if (ctrl_switches[7])
-              begin
-                dout <= `DEPOSIT;
-              end
-            else if (ctrl_switches[8])
-              begin
-                dout <= `EXAMINE_NEXT;
-              end
-            else if (ctrl_switches[9])
-              begin
-                dout <= `EXAMINE;
-              end
-            else if (ctrl_switches[10])
-              begin
-                dout <= `INST_STEP;
-              end
-            else
-              begin
-                dout <= `NONE;
-              end
+            dout <= ctrl_switches;
           end
         3'h2: // ADDR_LEDS
           begin
@@ -158,10 +160,10 @@ always @(posedge io_clk)
               end
             dout <= data_leds;
           end
-        3'h4: // REG_SWITCHES
+        3'h4: // CMD_AND_REG_SWITCHES
           begin
-            $display("Read REG_SWITCHES");
-            dout <= { 13'b0, reg_switches};
+            $display("Read CMD_AND_REG_SWITCHES");
+            dout <= cmd_and_reg_switches;
           end
         3'h5: // Counter HI
           begin
