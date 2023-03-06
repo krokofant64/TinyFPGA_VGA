@@ -50,14 +50,14 @@ module K16Io(din, addr, write_en, clk, dout, stop, reset, io_leds, io_clk, io_ad
   always @(posedge io_clk)
     begin
       case (io_addr)
-        0: io_leds <= addr_leds[3:0];
-        1: io_leds <= addr_leds[7:4];
-        2: io_leds <= addr_leds[11:8];
-        3: io_leds <= addr_leds[15:12];
-        4: io_leds <= data_leds[3:0];
-        5: io_leds <= data_leds[7:4];
-        6: io_leds <= data_leds[11:8];
-        7: io_leds <= data_leds[15:12];
+        7: io_leds <= addr_leds[3:0];
+        0: io_leds <= addr_leds[7:4];
+        1: io_leds <= addr_leds[11:8];
+        2: io_leds <= addr_leds[15:12];
+        3: io_leds <= data_leds[3:0];
+        4: io_leds <= data_leds[7:4];
+        5: io_leds <= data_leds[11:8];
+        6: io_leds <= data_leds[15:12];
       endcase
     end
 
@@ -181,7 +181,7 @@ always @(posedge io_clk)
             if (write_en)
               begin
                 $display("Write SOUND_DIVISOR");
-                sound_divisor <= din;
+                sound_divisor <=  din;
               end;
             dout <= sound_divisor;
           end

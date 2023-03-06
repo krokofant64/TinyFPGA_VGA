@@ -1,0 +1,36 @@
+@startuml
+State Reset
+Reset --> FETCH_INSTR
+note on link
+  write <= 0
+  register[0..7] <= 0
+  carry <= 0
+  zero <= 0
+  negative <= 0
+  running <= 0
+end note
+FETCH_INSTR -down-> WAIT_INSTR : [running == 1]
+note on link
+  write <= 0
+  address <= register[PC]
+  operationType <= `ALU_OP
+  operation <= `ADD_OP
+  operand1 <= register[PC]
+  operand2 <= 1
+end note
+FETCH_INSTR -right-> PANEL_FETCH_DATA : [running == 0]
+note top of PANEL_FETCH_DATA : see "Handle Panel"
+WAIT_INSTR -down-> DECODE_INSTR
+note on link
+  write <= 0
+  register[PC] <= result
+end note
+DECODE_INSTR -down-> FETCH_INSTR : [data_in == 001?????????10??\nCLC (0), SEC (1), CLI (2), SEI (3), ROL(4)]
+note on link
+  write <= 0
+  if data_in[1] == 0 
+    carry <= data_in[0]
+  else
+    enablInterrupt <= data_in[0]
+end note
+@enduml

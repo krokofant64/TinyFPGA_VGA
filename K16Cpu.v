@@ -84,6 +84,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
   localparam SP = 6; // SP in register 6
   localparam PC = 7; // PC in register 7
 
+  reg [15:0] instructionReg;
   reg [2:0] destReg;
 
   // Flags
@@ -385,6 +386,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
                     operand2 <= 16'h0001;
                     destReg <= SP;
                     data_out <= register[PC];
+                    instructionReg <= data_in;
                     state <= JSR_WAIT_WRITE_STACK;
                     $display("   operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{{6{data_in[9]}}, data_in[9:0]});
                   end
@@ -512,8 +514,8 @@ module K16Cpu(clk, reset, stop, hold, busy,
             register[destReg] <= result;
             operationType <= `ALU_OP;
             operation <= `ADD_OP;
-            operand1 <= register[data_in[12:10]];
-            operand2 <= {{6{data_in[9]}}, data_in[9:0]};
+            operand1 <= register[instructionReg[12:10]];
+            operand2 <= {{6{instructionReg[9]}}, instructionReg[9:0]};
             state <= JUMP;
           end
         STOPPED:

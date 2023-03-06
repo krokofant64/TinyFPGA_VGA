@@ -1,6 +1,7 @@
 `include "K16Cpu.v"
 `include "K16Video.v"
 `include "K16Ram.v"
+`include "K16Rom.v"
 `include "K16Io.v"
 
 module K16Computer(clk_16,
@@ -60,14 +61,20 @@ module K16Computer(clk_16,
   reg  [15:0] frame_buffer_din_bus;
   wire [15:0] frame_buffer_dout_bus;
   reg         frame_buffer_write;
+
   wire [15:0] cpu_addr_bus;
   wire [15:0] cpu_dout_bus;
   reg  [15:0] cpu_din_bus;
   wire        cpu_write;
-  reg  [9:0]  ram_addr_bus;
+
+  reg  [11:0] ram_addr_bus;
   wire [15:0] ram_dout_bus;
   reg  [15:0] ram_din_bus;
   reg         ram_write;
+
+  reg  [8:0]  rom_addr_bus;
+  wire [15:0] rom_dout_bus;
+
   reg  [2:0]  io_addr_bus;
   wire [15:0] io_dout_bus;
   reg  [15:0] io_din_bus;
@@ -114,12 +121,18 @@ module K16Computer(clk_16,
     .rclk(clk),
     .dout(frame_buffer_dout_bus));
 
-  K16SinglePortRam ram(
+  K16SinglePortRam #(12) ram(
     .din(ram_din_bus),
     .addr(ram_addr_bus),
     .write_en(ram_write),
     .clk(clk),
     .dout(ram_dout_bus));
+
+  K16Rom rom(
+    .addr(rom_addr_bus),
+    .clk(clk),
+    .dout(rom_dout_bus)
+    );
 
   K16Io io(
     .din(io_din_bus),
@@ -153,22 +166,23 @@ module K16Computer(clk_16,
   always @(*)
     begin
       casez (cpu_addr_bus)
-        16'b000000??????????: // RAM
+        16'b0000????????????: // RAM 0000 - 0FFF
           begin
             ram_write <= cpu_write;
             frame_buffer_write <= 0;
             io_write <= 0;
 
-            ram_addr_bus <= cpu_addr_bus[9:0];
+            ram_addr_bus <= cpu_addr_bus[11:0];
             frame_buffer_waddr_bus <= 0;
             io_addr_bus <= 0;
+            rom_addr_bus <= 0;
 
             cpu_din_bus <= ram_dout_bus;
             ram_din_bus <= cpu_dout_bus;
             frame_buffer_din_bus <= 0;
             io_din_bus <= 0;
           end
-        16'b10000???????????: // Frame buffer
+        16'b10000???????????: // Frame buffer 8000 - 87FF
           begin
             ram_write <= 0;
             frame_buffer_write <= cpu_write;
@@ -177,13 +191,30 @@ module K16Computer(clk_16,
             ram_addr_bus <= 0;
             frame_buffer_waddr_bus <= cpu_addr_bus[10:0];
             io_addr_bus <= 0;
+            rom_addr_bus <= 0;
 
             cpu_din_bus <= 0;
             ram_din_bus <= 0;
             frame_buffer_din_bus <= cpu_dout_bus;
             io_din_bus <= 0;
           end
-        16'b1111111111111???: // IO
+          16'b1111000?????????: // ROM F000 - F1FF
+            begin
+              ram_write <= 0;
+              frame_buffer_write <= 0;
+              io_write <= 0;
+
+              ram_addr_bus <= 0;
+              frame_buffer_waddr_bus <= 0;
+              io_addr_bus <= 0;
+              rom_addr_bus <= cpu_addr_bus[8:0];
+
+              cpu_din_bus <= rom_dout_bus;
+              ram_din_bus <= 0;
+              frame_buffer_din_bus <= 0;
+              io_din_bus <= 0;
+            end
+        16'b1111111111111???: // IO FFF8 - FFFF
           begin
             ram_write <= 0;
             frame_buffer_write <= 0;
@@ -192,6 +223,7 @@ module K16Computer(clk_16,
             ram_addr_bus <= 0;
             frame_buffer_waddr_bus <= 0;
             io_addr_bus <= cpu_addr_bus[2:0];
+            rom_addr_bus <= 0;
 
             cpu_din_bus <= io_dout_bus;
             ram_din_bus <= 0;
@@ -207,8 +239,9 @@ module K16Computer(clk_16,
             ram_addr_bus <= 0;
             frame_buffer_waddr_bus <= 0;
             io_addr_bus <= 0;
+            rom_addr_bus <= 0;
 
-            cpu_din_bus <= 0;
+            cpu_din_bus <= 16'h9FFF;
             ram_din_bus <= 0;
             frame_buffer_din_bus <= 0;
             io_din_bus <= 0;
