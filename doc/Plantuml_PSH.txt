@@ -1,0 +1,45 @@
+@startuml
+State Reset
+Reset --> FETCH_INSTR
+note on link
+  write <= 0
+  register[0..7] <= 0
+  carry <= 0
+  zero <= 0
+  negative <= 0
+  running <= 0
+end note
+FETCH_INSTR -right-> PANEL_FETCH_DATA : [running == 0]
+note top of PANEL_FETCH_DATA : see "Handle Panel"
+FETCH_INSTR -down-> WAIT_INSTR : [running == 1]
+note on link
+  write <= 0
+  address <= register[PC]
+  operationType <= `ALU_OP
+  operation <= `ADD_OP
+  operand1 <= register[PC]
+  operand2 <= 1
+end note
+WAIT_INSTR -down-> DECODE_INSTR
+note on link
+  write <= 0
+  register[PC] <= result
+end note
+DECODE_INSTR -down-> PSH_WAIT_WRITE_STACK : [data_in == 001?????????1100\nPSH]
+note on link
+  write <= 1;
+  address <= register[SP];
+  operationType <= `ALU_OP;
+  operation <= `SUB_OP;
+  operand1 <= register[SP];
+  operand2 <= 16'h0001;
+  destReg <= SP;
+  data_out <= register[data_in[12:10]];
+end note
+PSH_WAIT_WRITE_STACK -down-> FETCH_INSTR
+note on link
+  write <= 0;
+  register[destReg] <= result;
+end note
+
+@enduml

@@ -81,6 +81,7 @@ module K16Computer(clk_16,
   reg         io_write;
   wire stop;
   wire reset;
+  wire interrupt;
   wire hold;
   wire busy;
 
@@ -103,6 +104,7 @@ module K16Computer(clk_16,
   K16Video video(
     .clk(clk),
     .reset(reset),
+    .interrupt(interrupt),
     .hsync(vga_h_sync),
     .vsync(vga_v_sync),
     .vga_R(vga_R),
@@ -153,6 +155,7 @@ module K16Computer(clk_16,
     .clk(clk),
     .reset(reset),
     .stop(stop),
+    .interrupt(interrupt),
     .hold(hold),
     .busy(busy),
     .address(cpu_addr_bus),

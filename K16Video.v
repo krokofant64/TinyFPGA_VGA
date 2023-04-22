@@ -4,9 +4,10 @@
 `include "K16CharRom.v"
 `include "K16HvsyncGenerator.v"
 
-module K16Video(clk, reset, hsync, vsync, vga_R, vga_G, vga_B, frame_buffer_addr, want_read_frame_buffer, frame_buffer_data);
+module K16Video(clk, reset, interrupt, hsync, vsync, vga_R, vga_G, vga_B, frame_buffer_addr, want_read_frame_buffer, frame_buffer_data);
   input clk;
   input reset;
+  output reg interrupt;
   output hsync;
   output vsync;
   output vga_R;
@@ -29,7 +30,7 @@ module K16Video(clk, reset, hsync, vsync, vga_R, vga_G, vga_B, frame_buffer_addr
   localparam RANGE_HIGH = PIXEL_PER_BIT + 1;
   localparam RANGE_LOW = PIXEL_PER_BIT - 1;
 
-  wire display_on;
+  wire display_on; 
   wire [9:0] hpos;
   wire [9:0] vpos;
 
@@ -45,8 +46,10 @@ module K16Video(clk, reset, hsync, vsync, vga_R, vga_G, vga_B, frame_buffer_addr
   reg [10:0] row_index;
   reg [5:0] col_index;
 
+
   always @(posedge clk)
     begin
+      interrupt <= (vpos == 480 && hpos == 0);
       if (vpos == SCREEN_HEIGHT + 1)
         begin
           row_index <= 0;

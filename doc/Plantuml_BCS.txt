@@ -1,0 +1,57 @@
+@startuml
+State Reset
+State Branch <<choice>>
+Reset --> FETCH_INSTR
+note on link
+  write <= 0
+  register[0..7] <= 0
+  carry <= 0
+  zero <= 0
+  negative <= 0
+  running <= 0
+end note
+FETCH_INSTR -right-> PANEL_FETCH_DATA : [running == 0]
+note top of PANEL_FETCH_DATA : see "Handle Panel"
+FETCH_INSTR -down-> WAIT_INSTR : [running == 1]
+note on link
+  write <= 0
+  address <= register[PC]
+  operationType <= `ALU_OP
+  operation <= `ADD_OP
+  operand1 <= register[PC]
+  operand2 <= 1
+end note
+WAIT_INSTR -down-> DECODE_INSTR
+note on link
+  write <= 0
+  register[PC] <= result
+end note
+DECODE_INSTR -down-> Branch : [data_in == b010?????????????\nBCS (0), BCC (1), BZS (2) BZC (3), BNS (4), BNC (5), BOS (6), BOC (7)]
+Branch --> JUMP : [Condition true]
+note on link
+  write <= 0;
+  operationType <= `ALU_OP;
+  operation <= `ADD_OP;
+  operand1 <= register[data_in[9:7]];
+  operand2 <= {{9{data_in[6]}}, data_in[6:0]};;
+end note
+Branch--> FETCH_INSTR  : [Condition false]
+note on link
+  write <= 0;
+end note
+JUMP -down-> FETCH_INSTR
+note on link
+  write <= 0;
+  register[PC] <= result;
+end note
+note right of Branch
+Condition:
+
+(data_in[12:10] == 3'b000 && carry == 1'b1) ||
+(data_in[12:10] == 3'b001 && carry == 1'b0) ||
+(data_in[12:10] == 3'b010 && zero == 1'b1) ||
+(data_in[12:10] == 3'b011 && zero == 1'b0) ||
+(data_in[12:10] == 3'b100 && negative == 1'b1) ||
+(data_in[12:10] == 3'b101 && negative == 1'b0)
+end note
+@enduml
