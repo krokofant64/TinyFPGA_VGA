@@ -23,11 +23,12 @@
 `define DEPOSIT_REGISTER  9
 
 
-module K16Cpu(clk, reset, stop, hold, busy,
+module K16Cpu(clk, reset, stop, interrupt, hold, busy,
              address, data_in, data_out, write, statusR, statusG, statusB);
   input              clk;
   input              reset;
   input              stop;
+  input              interrupt;
   input              hold;
   output reg         busy;
   output reg [15:0]  address;
@@ -54,29 +55,36 @@ module K16Cpu(clk, reset, stop, hold, busy,
   localparam WAIT_WRITE_MEM = 12;
   localparam PSH_WAIT_WRITE_STACK = 13;
   localparam POP_CALCULATE_SP = 14;
-  localparam JSR_WAIT_WRITE_STACK = 15;
+  localparam POF_CALCULATE_SP = 15;
+  localparam POF_WAIT_READ_MEM = 16;
+  localparam POF_STORE_READ_MEM = 17;
+  localparam JSR_WAIT_WRITE_STACK = 18;
+  localparam INTERRUPT_WAIT_WRITE_STACK = 19;
+  localparam INTERRUPT_WAIT_ADDRESS = 20;
+  localparam INTERRUPT_STORE_ADDRESS = 21;
 
-  localparam STOPPED = 16;
-  localparam PANEL_EXAMINE_WAIT_NEXT = 17;
-  localparam PANEL_DEPOSIT_WAIT_NEXT = 18;
-  localparam PANEL_DEPOSIT_WAIT_WRITE_MEM = 19;
-  localparam PANEL_START_WAIT_ADDR = 20;
-  localparam PANEL_EXAMINE_WAIT_ADDR = 21;
-  localparam PANEL_DEPOSIT_WAIT_DATA = 22;
-  localparam PANEL_DEPOSIT_WRITE_DATA = 23;
-  localparam PANEL_DECODE_CTRL_SWITCHES = 24;
-  localparam PANEL_EXAMINE_REG_WAIT_REG = 25;
-  localparam PANEL_SHOW_REG = 26;
-  localparam PANEL_DEPOSIT_REG_WAIT_REG = 27;
-  localparam PANEL_DEPOSIT_REG_FETCH_DATA = 28;
-  localparam PANEL_DEPOSIT_REG_WAIT_DATA = 29;
-  localparam PANEL_DEPOSIT_REG_WRITE_DATA = 30;
-  localparam PANEL_FETCH_DATA = 31;
-  localparam PANEL_WAIT_DATA = 32;
-  localparam PANEL_SHOW_DATA = 33;
-  localparam PANEL_SHOW_ADDR = 34;
-  localparam PANEL_WAIT_CTRL_SWITCHES = 35;
-  localparam PANEL_EXAMINE_SET_ADDR = 36;
+  localparam STOPPED = 22;
+  localparam PANEL_EXAMINE_WAIT_NEXT = 23;
+  localparam PANEL_DEPOSIT_WAIT_NEXT = 24;
+  localparam PANEL_DEPOSIT_WAIT_WRITE_MEM = 25;
+  localparam PANEL_START_WAIT_ADDR = 26;
+  localparam PANEL_START_SET_ADDR = 27;
+  localparam PANEL_EXAMINE_WAIT_ADDR = 28;
+  localparam PANEL_DEPOSIT_WAIT_DATA = 29;
+  localparam PANEL_DEPOSIT_WRITE_DATA = 30;
+  localparam PANEL_DECODE_CTRL_SWITCHES = 31;
+  localparam PANEL_EXAMINE_REG_WAIT_REG = 32;
+  localparam PANEL_SHOW_REG = 33;
+  localparam PANEL_DEPOSIT_REG_WAIT_REG = 34;
+  localparam PANEL_DEPOSIT_REG_FETCH_DATA = 35;
+  localparam PANEL_DEPOSIT_REG_WAIT_DATA = 36;
+  localparam PANEL_DEPOSIT_REG_WRITE_DATA = 37;
+  localparam PANEL_FETCH_DATA = 38;
+  localparam PANEL_WAIT_DATA = 39;
+  localparam PANEL_SHOW_DATA = 40;
+  localparam PANEL_SHOW_ADDR = 41;
+  localparam PANEL_WAIT_CTRL_SWITCHES = 42;
+  localparam PANEL_EXAMINE_SET_ADDR = 43;
 
   // 8 16-bit registers
   reg [15:0] register[0:7];
@@ -88,10 +96,12 @@ module K16Cpu(clk, reset, stop, hold, busy,
   reg [2:0] destReg;
 
   // Flags
-  reg carry;
-  reg negative;
-  reg zero;
-  reg overflow;
+  reg [3:0] flags;
+
+  localparam CARRY    = 0;
+  localparam NEGATIVE = 1;
+  localparam ZERO     = 2;
+  localparam OVERFLOW = 3;
   reg enableInterrupt;
 
   // CPU state
@@ -103,6 +113,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
   reg [2:0]   operation;
   reg [1:0]   operationType;
   reg         running = 0;
+  reg         handleInterrupt = 0;
   wire        carryOut;
   wire        zeroOut;
   wire        negativeOut;
@@ -112,7 +123,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
   K16Alu alu(
     .operand1(operand1),
     .operand2(operand2),
-    .carryIn(carry),
+    .carryIn(flags[CARRY]),
     .operationType(operationType),
     .operation(operation),
     .result(result),
@@ -136,6 +147,11 @@ module K16Cpu(clk, reset, stop, hold, busy,
         busy <= 0;
         running <= 0;
         key_valid <= 1;
+      end
+    else
+    if (interrupt && enableInterrupt)
+      begin
+        handleInterrupt <= 1;
       end
     else
     begin
@@ -162,11 +178,13 @@ module K16Cpu(clk, reset, stop, hold, busy,
              register[3] <= 16'h0000;
              register[4] <= 16'h0000;
              register[5] <= 16'h0000;
-             register[SP] <= 16'h0000;
+             register[SP] <= 16'h0FFE;
              register[PC] <= 16'h0000;
-             carry <= 0;
-             zero <= 0;
-             negative <= 0;
+             flags[CARRY] <= 0;
+             flags[ZERO] <= 0;
+             flags[NEGATIVE] <= 0;
+             enableInterrupt <= 0;
+             handleInterrupt <= 0;
              running <= 0;
              state <= FETCH_INSTR;
            end
@@ -175,13 +193,30 @@ module K16Cpu(clk, reset, stop, hold, busy,
              $display("FETCH_INSTR");
              if (running)
                begin
-                 write <= 0;
-                 address <= register[PC];
-                 operationType <= `ALU_OP;
-                 operation <= `ADD_OP;
-                 operand1 <= register[PC];
-                 operand2 <= 1;
-                 state <= WAIT_INSTR;
+                 if (handleInterrupt == 0)
+                   begin
+                     write <= 0;
+                     address <= register[PC];
+                     operationType <= `ALU_OP;
+                     operation <= `ADD_OP;
+                     operand1 <= register[PC];
+                     operand2 <= 1;
+                     state <= WAIT_INSTR;
+                  end
+                else
+                  begin
+                    enableInterrupt <= 0;
+                    write <= 1;
+                    address <= register[SP];
+                    operationType <= `ALU_OP;
+                    operation <= `SUB_OP;
+                    operand1 <= register[SP];
+                    operand2 <= 16'h0001;
+                    destReg <= SP;
+                    data_out <= register[PC];
+                    instructionReg <= data_in;
+                    state <= INTERRUPT_WAIT_WRITE_STACK;
+                  end
                end
              else
                begin
@@ -285,7 +320,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
                     write <= 0;
                     if (data_in[1] == 1'b0)
                       begin
-                        carry <= data_in[0];
+                        flags[CARRY] <= data_in[0];
                       end
                     else
                       begin
@@ -306,6 +341,19 @@ module K16Cpu(clk, reset, stop, hold, busy,
                     data_out <= register[data_in[12:10]];
                     state <= PSH_WAIT_WRITE_STACK;
                   end
+                  16'b001?????????1110:
+                    begin
+                      $display("DECODE_INSTR -  PSF");
+                      write <= 1;
+                      address <= register[SP];
+                      operationType <= `ALU_OP;
+                      operation <= `SUB_OP;
+                      operand1 <= register[SP];
+                      operand2 <= 16'h0001;
+                      destReg <= SP;
+                      data_out <= {12'h000, flags};
+                      state <= PSH_WAIT_WRITE_STACK;
+                    end
                   16'b001?????????1101:
                     begin
                       $display("DECODE_INSTR -  POP");
@@ -317,15 +365,26 @@ module K16Cpu(clk, reset, stop, hold, busy,
                       destReg <= data_in[12:10];
                       state <= POP_CALCULATE_SP;
                     end
+                    16'b001?????????1111:
+                      begin
+                        $display("DECODE_INSTR -  POF");
+                        write <= 0;
+                        operationType <= `ALU_OP;
+                        operation <= `ADD_OP;
+                        operand1 <= register[SP];
+                        operand2 <= 16'h0001;
+                        destReg <= data_in[12:10];
+                        state <= POF_CALCULATE_SP;
+                      end
                 16'b010?????????????:
                   begin
                     $display("DECODE_INSTR - BCS (0), BCC (1), BZS (2) BZC (3), BNS (4), BNC (5), BOS (6), BOC (7)");
-                    if ((data_in[12:10] == 3'b000 && carry == 1'b1) ||
-                        (data_in[12:10] == 3'b001 && carry == 1'b0) ||
-                        (data_in[12:10] == 3'b010 && zero == 1'b1) ||
-                        (data_in[12:10] == 3'b011 && zero == 1'b0) ||
-                        (data_in[12:10] == 3'b100 && negative == 1'b1) ||
-                        (data_in[12:10] == 3'b101 && negative == 1'b0))
+                    if ((data_in[12:10] == 3'b000 && flags[CARRY] == 1'b1) ||
+                        (data_in[12:10] == 3'b001 && flags[CARRY] == 1'b0) ||
+                        (data_in[12:10] == 3'b010 && flags[ZERO] == 1'b1) ||
+                        (data_in[12:10] == 3'b011 && flags[ZERO] == 1'b0) ||
+                        (data_in[12:10] == 3'b100 && flags[NEGATIVE] == 1'b1) ||
+                        (data_in[12:10] == 3'b101 && flags[NEGATIVE] == 1'b0))
                       begin
                         write <= 0;
                         operationType <= `ALU_OP;
@@ -426,8 +485,8 @@ module K16Cpu(clk, reset, stop, hold, busy,
               $display("STORE_RESULT R%d = %04X", destReg, result);
               write <= 0;
               register[destReg] <= result;
-              zero <= zeroOut;
-              negative <= negativeOut;
+              flags[ZERO] <= zeroOut;
+              flags[NEGATIVE] <= negativeOut;
               state <= FETCH_INSTR;
            end
          STORE_RESULT_AND_CARRY:
@@ -435,18 +494,18 @@ module K16Cpu(clk, reset, stop, hold, busy,
              $display("STORE_RESULT_AND_CARRY R%d = %04X", destReg, result);
              write <= 0;
              register[destReg] <= result;
-             carry <= carryOut;
-             zero <= zeroOut;
-             negative <= negativeOut;
+             flags[CARRY] <= carryOut;
+             flags[ZERO] <= zeroOut;
+             flags[NEGATIVE] <= negativeOut;
              state <= FETCH_INSTR;
            end
          STORE_FLAGS:
            begin
              $display("STORE_FLAGS");
              write <= 0;
-             carry <= carryOut;
-             zero <= zeroOut;
-             negative <= negativeOut;
+             flags[CARRY] <= carryOut;
+             flags[ZERO] <= zeroOut;
+             flags[NEGATIVE] <= negativeOut;
              state <= FETCH_INSTR;
            end
          JUMP:
@@ -474,8 +533,8 @@ module K16Cpu(clk, reset, stop, hold, busy,
              $display("STORE_READ_MEM");
              write <= 0;
              register[destReg] <= data_in;
-             zero <= data_in == 16'h0000 ? 1'b1 : 1'b0;
-             negative <= data_in[15] == 1'b1 ? 1'b1 : 1'b0;
+             flags[ZERO] <= data_in == 16'h0000 ? 1'b1 : 1'b0;
+             flags[NEGATIVE] <= data_in[15] == 1'b1 ? 1'b1 : 1'b0;
              state <= FETCH_INSTR;
            end
          STO_CALC_MEM_ADDR:
@@ -507,6 +566,27 @@ module K16Cpu(clk, reset, stop, hold, busy,
              register[SP] <= result;
              state <= WAIT_READ_MEM;
           end
+        POF_CALCULATE_SP:
+          begin
+            $display("POF_CALCULATE_SP");
+            write <= 0;
+            address <= result;
+            register[SP] <= result;
+            state <= POF_WAIT_READ_MEM;
+          end
+        POF_WAIT_READ_MEM:
+          begin
+            $display("POF_WAIT_READ_MEM");
+            write <= 0;
+            state <= POF_STORE_READ_MEM;
+          end
+        POF_STORE_READ_MEM:
+          begin
+            $display("POF_STORE_READ_MEM");
+            write <= 0;
+            flags <= data_in[3:0];
+            state <= FETCH_INSTR;
+          end
         JSR_WAIT_WRITE_STACK:
           begin
             $display("JSR_WAIT_WRITE_STACK");
@@ -517,6 +597,26 @@ module K16Cpu(clk, reset, stop, hold, busy,
             operand1 <= register[instructionReg[12:10]];
             operand2 <= {{6{instructionReg[9]}}, instructionReg[9:0]};
             state <= JUMP;
+          end
+        INTERRUPT_WAIT_WRITE_STACK:
+          begin
+            $display("INTERRUPT_WAIT_WRITE_STACK");
+            handleInterrupt <= 0;
+            write <= 0;
+            register[SP] <= result;
+            address <= 16'h0FFF;
+            state <= INTERRUPT_WAIT_ADDRESS;
+          end
+        INTERRUPT_WAIT_ADDRESS:
+          begin
+            $display("INTERRUPT_WAIT_ADDRESS");
+            write <= 0;
+            state <= INTERRUPT_STORE_ADDRESS;
+          end
+        INTERRUPT_STORE_ADDRESS:
+          begin
+            register[PC] <= data_in;
+            state <= FETCH_INSTR;
           end
         STOPPED:
           begin
@@ -650,6 +750,12 @@ module K16Cpu(clk, reset, stop, hold, busy,
           begin
             $display("PANEL_START_WAIT_ADDR");
             write <= 0;
+            state <= PANEL_START_SET_ADDR;
+          end
+        PANEL_START_SET_ADDR:
+          begin
+            $display("PANEL_START_WAIT_ADDR");
+            write <= 0;
             running <= 1;
             register[PC] <= data_in;
             address <= data_in;
@@ -658,7 +764,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
             operand1 <= data_in;
             operand2 <= 1;
             state <= WAIT_INSTR;
-          end
+           end
         PANEL_EXAMINE_WAIT_ADDR:
           begin
             $display("PANEL_EXAMINE_WAIT_ADDR");
@@ -781,7 +887,7 @@ module K16Cpu(clk, reset, stop, hold, busy,
             state <= STOPPED;
           end
       endcase
-      $display(".  State=%02X,R0=%04X,R1=%04X,R2=%04X,R3=%04X,R4=%04X,R5=%04X,R6=%04X,R7=%04X,C=%B,Z=%B,N=%B,Address=%04x,data_in=%04X,write=%01X",state,register[0],register[1],register[2],register[3],register[4],register[5],register[6],register[7],carry,zero,negative,address,data_in,write);
+      $display(".  State=%02X,R0=%04X,R1=%04X,R2=%04X,R3=%04X,R4=%04X,R5=%04X,R6=%04X,R7=%04X,C=%B,Z=%B,N=%B,Address=%04x,data_in=%04X,write=%01X",state,register[0],register[1],register[2],register[3],register[4],register[5],register[6],register[7],flags[CARRY],flags[ZERO],flags[NEGATIVE],address,data_in,write);
     end
 endmodule
 
