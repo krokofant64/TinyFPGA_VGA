@@ -428,6 +428,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                       begin
                         $display("DECODE_INSTR - HLT");
                         write <= 0;
+                        running <= 0;
                         state <= PANEL_FETCH_DATA;
                       end
                   end
