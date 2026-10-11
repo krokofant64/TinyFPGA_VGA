@@ -85,6 +85,22 @@ module K16Computer(clk_16,
   wire hold;
   wire busy;
 
+  // The frame buffer has only one read port. The video owns it while it
+  // fetches a character (2 of every 16 clocks), the CPU the rest of the time.
+  wire [10:0] video_frame_buffer_addr;
+  wire        video_reads_frame_buffer;
+  reg         cpu_frame_buffer_data_valid = 0;
+
+  assign frame_buffer_raddr_bus = video_reads_frame_buffer ? video_frame_buffer_addr : cpu_addr_bus[10:0];
+
+  // The read data is registered, so the CPU's data is valid when the CPU
+  // owned the read port in the previous clock.
+  always @(posedge clk)
+    cpu_frame_buffer_data_valid <= !video_reads_frame_buffer;
+
+  // Stall the CPU while it reads the frame buffer and the data is not valid
+  assign hold = (cpu_addr_bus[15:11] == 5'b10000) && !cpu_frame_buffer_data_valid;
+
   wire locked, clk;
 
   SB_PLL40_CORE #(
@@ -110,8 +126,8 @@ module K16Computer(clk_16,
     .vga_R(vga_R),
     .vga_G(vga_G),
     .vga_B(vga_B),
-    .frame_buffer_addr(frame_buffer_raddr_bus),
-    .want_read_frame_buffer(hold),
+    .frame_buffer_addr(video_frame_buffer_addr),
+    .want_read_frame_buffer(video_reads_frame_buffer),
     .frame_buffer_data(frame_buffer_dout_bus));
 
   K16DualPortRam frame_buffer(
@@ -196,7 +212,7 @@ module K16Computer(clk_16,
             io_addr_bus <= 0;
             rom_addr_bus <= 0;
 
-            cpu_din_bus <= 0;
+            cpu_din_bus <= frame_buffer_dout_bus;
             ram_din_bus <= 0;
             frame_buffer_din_bus <= cpu_dout_bus;
             io_din_bus <= 0;

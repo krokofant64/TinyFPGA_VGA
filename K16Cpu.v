@@ -154,6 +154,12 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
         handleInterrupt <= 1;
       end
     else
+    if (hold)
+      begin
+        // Wait until the memory data is valid (e.g. frame buffer read port
+        // used by the video)
+      end
+    else
     begin
       if (running)
         begin
