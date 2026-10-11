@@ -23,8 +23,8 @@ module K16Rom (addr, clk, dout);// 512x16
 rom[0] = 16'h240c; // Sleep:         PSH R1
 rom[1] = 16'h280c; //                PSH R2
 rom[2] = 16'h2c0c; //                PSH R3
-rom[3] = 16'h6857; //                LDL R2 25175.L
-rom[4] = 16'h6962; //                LDH R2 25175.H
+rom[3] = 16'h68a8; //                LDL R2 25000.L ; clock cycles per ms
+rom[4] = 16'h6961; //                LDH R2 25000.H
 rom[5] = 16'hbc2f; //                JSR Multiply
 rom[6] = 16'h6cfe; //                LDL R3 $IoCntrLo.L
 rom[7] = 16'h6dff; //                LDH R3 $IoCntrLo.H

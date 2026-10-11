@@ -33,7 +33,7 @@
 `define LDLZI_OP 3'b110
 `define LDHZI_OP 3'b111
 
-module K16Alu(operand1, operand2, carryIn, operationType, operation, result, carryOut, zeroOut, negativeOut);
+module K16Alu(operand1, operand2, carryIn, operationType, operation, result, carryOut, zeroOut, negativeOut, overflowOut);
 
   input [15:0]      operand1;
   input [15:0]      operand2;
@@ -43,6 +43,7 @@ module K16Alu(operand1, operand2, carryIn, operationType, operation, result, car
   output reg         carryOut;
   output reg         zeroOut;
   output reg         negativeOut;
+  output reg         overflowOut;
   output reg [15:0] result;
 
   always @(*)
@@ -87,6 +88,17 @@ module K16Alu(operand1, operand2, carryIn, operationType, operation, result, car
 
     negativeOut = result[15];
     zeroOut = result == 0;
+
+    // Signed overflow of ADD, ADC, SUB, and SBC
+    if (operationType == `ALU_OP && operation[2] == 1'b0)
+      if (operation[1] == 1'b0)
+        // ADD, ADC: operands have the same sign, result has a different one
+        overflowOut = (operand1[15] == operand2[15]) && (result[15] != operand1[15]);
+      else
+        // SUB, SBC: operands have different signs, result differs from operand1
+        overflowOut = (operand1[15] != operand2[15]) && (result[15] != operand1[15]);
+    else
+      overflowOut = 1'b0;
     $display(".  .  operationType=%02B, operation=%02B, operand1=%04X, operand2=%04X, result=%04X, carryOut=%b", operationType, operation, operand1, operand2, result, carryOut);
   end
 endmodule

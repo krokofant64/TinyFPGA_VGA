@@ -117,6 +117,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
   wire        carryOut;
   wire        zeroOut;
   wire        negativeOut;
+  wire        overflowOut;
 
   reg         key_valid;
 
@@ -129,7 +130,8 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
     .result(result),
     .carryOut(carryOut),
     .zeroOut(zeroOut),
-    .negativeOut(negativeOut));
+    .negativeOut(negativeOut),
+    .overflowOut(overflowOut));
 
   always @(posedge clk)
     if (reset)
@@ -189,6 +191,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
              flags[CARRY] <= 0;
              flags[ZERO] <= 0;
              flags[NEGATIVE] <= 0;
+             flags[OVERFLOW] <= 0;
              enableInterrupt <= 0;
              handleInterrupt <= 0;
              running <= 0;
@@ -390,7 +393,9 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                         (data_in[12:10] == 3'b010 && flags[ZERO] == 1'b1) ||
                         (data_in[12:10] == 3'b011 && flags[ZERO] == 1'b0) ||
                         (data_in[12:10] == 3'b100 && flags[NEGATIVE] == 1'b1) ||
-                        (data_in[12:10] == 3'b101 && flags[NEGATIVE] == 1'b0))
+                        (data_in[12:10] == 3'b101 && flags[NEGATIVE] == 1'b0) ||
+                        (data_in[12:10] == 3'b110 && flags[OVERFLOW] == 1'b1) ||
+                        (data_in[12:10] == 3'b111 && flags[OVERFLOW] == 1'b0))
                       begin
                         write <= 0;
                         operationType <= `ALU_OP;
@@ -504,6 +509,11 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
              flags[CARRY] <= carryOut;
              flags[ZERO] <= zeroOut;
              flags[NEGATIVE] <= negativeOut;
+             if (operationType == `ALU_OP)
+               begin
+                 // ADD, ADC, SUB, SBC; shifts leave the overflow flag unchanged
+                 flags[OVERFLOW] <= overflowOut;
+               end
              state <= FETCH_INSTR;
            end
          STORE_FLAGS:
@@ -513,6 +523,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
              flags[CARRY] <= carryOut;
              flags[ZERO] <= zeroOut;
              flags[NEGATIVE] <= negativeOut;
+             flags[OVERFLOW] <= overflowOut;
              state <= FETCH_INSTR;
            end
          JUMP:
