@@ -1,6 +1,8 @@
 `ifndef K16IO_V
 `define K16IO_V
 
+`include "K16Trace.vh"
+
 module K16Io(din, addr, write_en, clk, dout, stop, reset, io_leds, io_clk, io_addr, io_switches, io_reg_switches, sound);
   input [2:0]       addr;
   input [15:0]      din;
@@ -26,7 +28,7 @@ module K16Io(din, addr, write_en, clk, dout, stop, reset, io_leds, io_clk, io_ad
   reg [19:0] io_clck_counter = 0;
   reg [21:0] sound_counter = 0;
 
-  localparam DIVISOR = 25000000 / 50;
+  parameter DIVISOR = 25000000 / 50; // I/O scan clock: 50 Hz (a parameter for faster simulation)
   always @(posedge clk)
     begin
        counter <= counter + 1;
@@ -132,55 +134,55 @@ always @(posedge io_clk)
       case (addr)
         3'h0: // ADDR_SWITCHES
           begin
-            $display("Read ADDR_SWITCHES");
+            if (`K16_TRACE) $display("Read ADDR_SWITCHES");
             dout <= addr_switches;
           end
         3'h1: // CTRL_SWITCHES
           begin
-            $display("Read CTRL_SWITCHES");
+            if (`K16_TRACE) $display("Read CTRL_SWITCHES");
             dout <= ctrl_switches;
           end
         3'h2: // ADDR_LEDS
           begin
-            $display("Read or write ADDR_LEDS");
+            if (`K16_TRACE) $display("Read or write ADDR_LEDS");
             if (write_en)
               begin
-                $display("Write ADDR_LEDS");
+                if (`K16_TRACE) $display("Write ADDR_LEDS");
                 addr_leds <= din;
               end;
             dout <= addr_leds;
           end
         3'h3: // DATA_LEDS
           begin
-          $display("Read or write DATA_LEDS");
+          if (`K16_TRACE) $display("Read or write DATA_LEDS");
             if (write_en)
               begin
-                $display("Write DATA_LEDS");
+                if (`K16_TRACE) $display("Write DATA_LEDS");
                 data_leds <= din;
               end
             dout <= data_leds;
           end
         3'h4: // CMD_AND_REG_SWITCHES
           begin
-            $display("Read CMD_AND_REG_SWITCHES");
+            if (`K16_TRACE) $display("Read CMD_AND_REG_SWITCHES");
             dout <= cmd_and_reg_switches;
           end
         3'h5: // Counter HI
           begin
-            $display("Read COUNTER_HI");
+            if (`K16_TRACE) $display("Read COUNTER_HI");
             dout <= counter[31:16];
           end
         3'h6: // Counter low
           begin
-          $display("Read COUNTER_LO");
+          if (`K16_TRACE) $display("Read COUNTER_LO");
             dout <= counter[15:0];
           end
         3'h7:
           begin
-            $display("Read SOUND_DIVISOR");
+            if (`K16_TRACE) $display("Read SOUND_DIVISOR");
             if (write_en)
               begin
-                $display("Write SOUND_DIVISOR");
+                if (`K16_TRACE) $display("Write SOUND_DIVISOR");
                 sound_divisor <=  din;
               end;
             dout <= sound_divisor;

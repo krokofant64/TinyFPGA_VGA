@@ -54,12 +54,12 @@ foreach ($program in $Programs)
    if ($LASTEXITCODE -ne 0) { Write-Host "$name : FAILED (emulator)" -ForegroundColor Red; $failed++; continue }
    $emulatorTime = (Get-Date) - $emulatorStart
 
-   # Hardware simulation (the CPU prints a trace on stdout, which is discarded)
+   # Hardware simulation (without the CPU trace)
    $hardwareStart = Get-Date
    Push-Location $outDir
    try
    {
-      & "$IverilogDir\bin\iverilog.exe" "-B$IverilogDir\lib\ivl" -I $repoDir -I $outDir -o sim.vvp "$PSScriptRoot\K16Compare_tb.v" 2> iverilog.log
+      & "$IverilogDir\bin\iverilog.exe" "-B$IverilogDir\lib\ivl" -DK16_NO_TRACE -I $repoDir -I $outDir -o sim.vvp "$PSScriptRoot\K16Compare_tb.v" 2> iverilog.log
       if ($LASTEXITCODE -ne 0) { Get-Content iverilog.log | Select-Object -First 10; throw "iverilog failed" }
       & "$IverilogDir\bin\vvp.exe" "-M$IverilogDir\lib\ivl" sim.vvp 2> vvp.log | Out-Null
    }

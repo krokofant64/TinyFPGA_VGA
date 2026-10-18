@@ -1,6 +1,8 @@
 `ifndef K16CPU_V
 `define K16CPU_V
 
+`include "K16Trace.vh"
+
 `include "K16Alu.v"
 
 //
@@ -136,7 +138,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
   always @(posedge clk)
     if (reset)
       begin
-        $display("Reset");
+        if (`K16_TRACE) $display("Reset");
         state <= RESET;
         busy <= 0;
         running <= 0;
@@ -145,7 +147,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
     else
     if (stop)
       begin
-        $display("Stop");
+        if (`K16_TRACE) $display("Stop");
         busy <= 0;
         running <= 0;
         key_valid <= 1;
@@ -178,7 +180,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
        case (state)
          RESET:
            begin
-             $display("RESET");
+             if (`K16_TRACE) $display("RESET");
              write <= 0;
              register[0] <= 16'h0000;
              register[1] <= 16'h0000;
@@ -199,7 +201,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
            end
          FETCH_INSTR:
            begin
-             $display("FETCH_INSTR");
+             if (`K16_TRACE) $display("FETCH_INSTR");
              if (running)
                begin
                  if (handleInterrupt == 0)
@@ -235,18 +237,18 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
            end
          WAIT_INSTR:
            begin
-             $display("WAIT_INSTR address=%04X", address);
+             if (`K16_TRACE) $display("WAIT_INSTR address=%04X", address);
              write <= 0;
              register[PC] <= result;
              state <= DECODE_INSTR;
            end
          DECODE_INSTR:
            begin
-              $display("DECODE_INSTR address=%04X", address);
+              if (`K16_TRACE) $display("DECODE_INSTR address=%04X", address);
               casez (data_in)
                 16'b000?????????00??:
                   begin
-                    $display("DECODE_INSTR - ADD (0), ADC (1), SUB (2), SBC (3)");
+                    if (`K16_TRACE) $display("DECODE_INSTR - ADD (0), ADC (1), SUB (2), SBC (3)");
                     // ADD (0), ADC (1), SUB (2), SBC (3), AND (4), OR (5), XOR (6), NOT (7)
                     write <= 0;
                     operationType <= `ALU_OP;
@@ -255,11 +257,11 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                     operand2 <= register[data_in[6:4]];
                     destReg <= data_in[12:10];
                     state <= STORE_RESULT_AND_CARRY;
-                    $display("  operation=%03B,operand1=%03B,operand2=%03B,dest=%03B",data_in[2:0],data_in[9:7],data_in[6:4],data_in[12:10]);
+                    if (`K16_TRACE) $display("  operation=%03B,operand1=%03B,operand2=%03B,dest=%03B",data_in[2:0],data_in[9:7],data_in[6:4],data_in[12:10]);
                   end
                 16'b000?????????01??:
                   begin
-                    $display("DECODE_INSTR - AND (4), OR (5), XOR (6), NOT (7)");
+                    if (`K16_TRACE) $display("DECODE_INSTR - AND (4), OR (5), XOR (6), NOT (7)");
                     // ADD (0), ADC (1), SUB (2), SBC (3), AND (4), OR (5), XOR (6), NOT (7)
                     write <= 0;
                     operationType <= `ALU_OP;
@@ -268,11 +270,11 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                     operand2 <= register[data_in[6:4]];
                     destReg <= data_in[12:10];
                     state <= STORE_RESULT;
-                    $display("   operation=%03B,operand1=%03B,operand2=%03B,dest=%03B",data_in[2:0],data_in[9:7],data_in[6:4],data_in[12:10]);
+                    if (`K16_TRACE) $display("   operation=%03B,operand1=%03B,operand2=%03B,dest=%03B",data_in[2:0],data_in[9:7],data_in[6:4],data_in[12:10]);
                   end
                 16'b000?????????10??:
                   begin
-                    $display("DECODE_INSTR - LD (0), LDL (1), LDH (2), SWP (3)");
+                    if (`K16_TRACE) $display("DECODE_INSTR - LD (0), LDL (1), LDH (2), SWP (3)");
                     write <= 0;
                     operationType <= `LOAD_OP;
                     operation <= {1'b0, data_in[1:0]};
@@ -283,7 +285,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                   end
                 16'b000?????????1100:
                   begin
-                    $display("DECODE_INSTR - INC");
+                    if (`K16_TRACE) $display("DECODE_INSTR - INC");
                     write <= 0;
                     operationType <= `ALU_OP;
                     operation <= `ADD_OP;
@@ -294,7 +296,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                   end
                 16'b000?????????1110:
                   begin
-                    $display("DECODE_INSTR - CMP");
+                    if (`K16_TRACE) $display("DECODE_INSTR - CMP");
                     write <= 0;
                     operationType <= `ALU_OP;
                     operation <= `SUB_OP;
@@ -304,7 +306,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                   end
                 16'b000?????????1111:
                   begin
-                    $display("DECODE_INSTR - DEC");
+                    if (`K16_TRACE) $display("DECODE_INSTR - DEC");
                     write <= 0;
                     operationType <= `ALU_OP;
                     operation <= `SUB_OP;
@@ -315,7 +317,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                   end
                 16'b001?????????0???:
                   begin
-                    $display("DECODE_INSTR - SHR (0), ASHL/SHL (1), ASHR (2), ROR (3), ROL(4)");
+                    if (`K16_TRACE) $display("DECODE_INSTR - SHR (0), ASHL/SHL (1), ASHR (2), ROR (3), ROL(4)");
                     write <= 0;
                     operationType <= `SHIFT_OP;
                     operation <= {data_in[2:0]};
@@ -325,7 +327,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                   end
                 16'b001?????????10??:
                   begin
-                    $display("DECODE_INSTR -  CLC (0), SEC (1), CLI (2), SEI (3)");
+                    if (`K16_TRACE) $display("DECODE_INSTR -  CLC (0), SEC (1), CLI (2), SEI (3)");
                     write <= 0;
                     if (data_in[1] == 1'b0)
                       begin
@@ -339,7 +341,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                   end
                 16'b001?????????1100:
                   begin
-                    $display("DECODE_INSTR -  PSH");
+                    if (`K16_TRACE) $display("DECODE_INSTR -  PSH");
                     write <= 1;
                     address <= register[SP];
                     operationType <= `ALU_OP;
@@ -352,7 +354,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                   end
                   16'b001?????????1110:
                     begin
-                      $display("DECODE_INSTR -  PSF");
+                      if (`K16_TRACE) $display("DECODE_INSTR -  PSF");
                       write <= 1;
                       address <= register[SP];
                       operationType <= `ALU_OP;
@@ -365,7 +367,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                     end
                   16'b001?????????1101:
                     begin
-                      $display("DECODE_INSTR -  POP");
+                      if (`K16_TRACE) $display("DECODE_INSTR -  POP");
                       write <= 0;
                       operationType <= `ALU_OP;
                       operation <= `ADD_OP;
@@ -376,7 +378,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                     end
                     16'b001?????????1111:
                       begin
-                        $display("DECODE_INSTR -  POF");
+                        if (`K16_TRACE) $display("DECODE_INSTR -  POF");
                         write <= 0;
                         operationType <= `ALU_OP;
                         operation <= `ADD_OP;
@@ -387,7 +389,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                       end
                 16'b010?????????????:
                   begin
-                    $display("DECODE_INSTR - BCS (0), BCC (1), BZS (2) BZC (3), BNS (4), BNC (5), BOS (6), BOC (7)");
+                    if (`K16_TRACE) $display("DECODE_INSTR - BCS (0), BCC (1), BZS (2) BZC (3), BNS (4), BNC (5), BOS (6), BOC (7)");
                     if ((data_in[12:10] == 3'b000 && flags[CARRY] == 1'b1) ||
                         (data_in[12:10] == 3'b001 && flags[CARRY] == 1'b0) ||
                         (data_in[12:10] == 3'b010 && flags[ZERO] == 1'b1) ||
@@ -412,7 +414,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                   end
                 16'b011?????????????:
                   begin
-                     $display("DECODE_INSTR - LDL imm8 (0), LDH imm8 (1), LDLZ imm8 (2), LDHZ imm8 (3)");
+                     if (`K16_TRACE) $display("DECODE_INSTR - LDL imm8 (0), LDH imm8 (1), LDLZ imm8 (2), LDHZ imm8 (3)");
                      write <= 0;
                      operationType <= `LOAD_OP;
                      operation <= {1'b1, data_in[9:8]};
@@ -420,24 +422,24 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                      operand2 <= {8'b00000000, data_in[7:0]};
                      destReg <= data_in[12:10];
                      state <= STORE_RESULT;
-                  $display("   operation=%03B,operand1=%04X,dest=%03B",operation,operand1,data_in[12:10]);
+                  if (`K16_TRACE) $display("   operation=%03B,operand1=%04X,dest=%03B",operation,operand1,data_in[12:10]);
                   end
                 16'b100?????????????:
                   begin
                     if (data_in[12:0] != 13'h1FFF)
                       begin
-                        $display("DECODE_INSTR - JMP");
+                        if (`K16_TRACE) $display("DECODE_INSTR - JMP");
                         write <= 0;
                         operationType <= `ALU_OP;
                         operation <= `ADD_OP;
                         operand1 <= register[data_in[12:10]];
                         operand2 <= {{6{data_in[9]}}, data_in[9:0]};
                         state <= JUMP;
-                        $display("   operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{{6{data_in[9]}}, data_in[9:0]});
+                        if (`K16_TRACE) $display("   operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{{6{data_in[9]}}, data_in[9:0]});
                       end
                     else
                       begin
-                        $display("DECODE_INSTR - HLT");
+                        if (`K16_TRACE) $display("DECODE_INSTR - HLT");
                         write <= 0;
                         running <= 0;
                         state <= PANEL_FETCH_DATA;
@@ -448,7 +450,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                   end
                 16'b101?????????????:
                   begin
-                    $display("DECODE_INSTR - JSR");
+                    if (`K16_TRACE) $display("DECODE_INSTR - JSR");
                     write <= 1;
                     address <= register[SP];
                     operationType <= `ALU_OP;
@@ -459,11 +461,11 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                     data_out <= register[PC];
                     instructionReg <= data_in;
                     state <= JSR_WAIT_WRITE_STACK;
-                    $display("   operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{{6{data_in[9]}}, data_in[9:0]});
+                    if (`K16_TRACE) $display("   operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{{6{data_in[9]}}, data_in[9:0]});
                   end
                 16'b110?????????????:
                   begin
-                    $display("DECODE_INSTR - LD [MEM]");
+                    if (`K16_TRACE) $display("DECODE_INSTR - LD [MEM]");
                     write <= 0;
                     operationType <= `ALU_OP;
                     operation <= `ADD_OP;
@@ -471,11 +473,11 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                     operand2 <= {{9{data_in[6]}}, data_in[6:0]};
                     destReg <= data_in[12:10];
                     state <= LD_CALC_MEM_ADDR;
-                    $display("   operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{{9{data_in[6]}}, data_in[6:0]});
+                    if (`K16_TRACE) $display("   operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{{9{data_in[6]}}, data_in[6:0]});
                   end
                 16'b111?????????????:
                   begin
-                    $display("DECODE_INSTR - STO");
+                    if (`K16_TRACE) $display("DECODE_INSTR - STO");
                     write <= 0;
                     operationType <= `ALU_OP;
                     operation <= `ADD_OP;
@@ -483,18 +485,18 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                     operand2 <= {{9{data_in[6]}}, data_in[6:0]};
                     destReg <= data_in[12:10];
                     state <= STO_CALC_MEM_ADDR;
-                    $display("   operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{{9{data_in[6]}}, data_in[6:0]});
+                    if (`K16_TRACE) $display("   operation=%03B,operand1=%04X,operand2=%04x",1'b0,data_in[12:10],{{9{data_in[6]}}, data_in[6:0]});
                   end
                 default:
                   begin
-                    $display("Invalid instruction");
+                    if (`K16_TRACE) $display("Invalid instruction");
                     write <= 0;
                   end
               endcase
            end
          STORE_RESULT:
            begin
-              $display("STORE_RESULT R%d = %04X", destReg, result);
+              if (`K16_TRACE) $display("STORE_RESULT R%d = %04X", destReg, result);
               write <= 0;
               register[destReg] <= result;
               flags[ZERO] <= zeroOut;
@@ -503,7 +505,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
            end
          STORE_RESULT_AND_CARRY:
            begin
-             $display("STORE_RESULT_AND_CARRY R%d = %04X", destReg, result);
+             if (`K16_TRACE) $display("STORE_RESULT_AND_CARRY R%d = %04X", destReg, result);
              write <= 0;
              register[destReg] <= result;
              flags[CARRY] <= carryOut;
@@ -518,7 +520,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
            end
          STORE_FLAGS:
            begin
-             $display("STORE_FLAGS");
+             if (`K16_TRACE) $display("STORE_FLAGS");
              write <= 0;
              flags[CARRY] <= carryOut;
              flags[ZERO] <= zeroOut;
@@ -528,27 +530,27 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
            end
          JUMP:
            begin
-             $display("JUMP");
+             if (`K16_TRACE) $display("JUMP");
              write <= 0;
              register[PC] <= result;
              state <= FETCH_INSTR;
            end
          LD_CALC_MEM_ADDR:
            begin
-             $display("LD_CALC_MEM_ADDR");
+             if (`K16_TRACE) $display("LD_CALC_MEM_ADDR");
              write <= 0;
              address <= result;
              state <= WAIT_READ_MEM;
            end
          WAIT_READ_MEM:
            begin
-             $display("WAIT_READ_MEM");
+             if (`K16_TRACE) $display("WAIT_READ_MEM");
              write <= 0;
              state <= STORE_READ_MEM;
            end
          STORE_READ_MEM:
            begin
-             $display("STORE_READ_MEM");
+             if (`K16_TRACE) $display("STORE_READ_MEM");
              write <= 0;
              register[destReg] <= data_in;
              flags[ZERO] <= data_in == 16'h0000 ? 1'b1 : 1'b0;
@@ -557,7 +559,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
            end
          STO_CALC_MEM_ADDR:
            begin
-             $display("STO_CALC_MEM_ADDR");
+             if (`K16_TRACE) $display("STO_CALC_MEM_ADDR");
              write <= 1;
              address <= result;
              data_out <= register[destReg];
@@ -565,20 +567,20 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
            end
         WAIT_WRITE_MEM:
           begin
-            $display("WAIT_WRITE_MEM");
+            if (`K16_TRACE) $display("WAIT_WRITE_MEM");
             write <= 1;
             state <= FETCH_INSTR;
           end
         PSH_WAIT_WRITE_STACK:
           begin
-            $display("PSH_WAIT_WRITE_STACK");
+            if (`K16_TRACE) $display("PSH_WAIT_WRITE_STACK");
             write <= 0;
             register[destReg] <= result;
             state <= FETCH_INSTR;
           end
         POP_CALCULATE_SP:
           begin
-             $display("POP_CALCULATE_SP");
+             if (`K16_TRACE) $display("POP_CALCULATE_SP");
              write <= 0;
              address <= result;
              register[SP] <= result;
@@ -586,7 +588,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
           end
         POF_CALCULATE_SP:
           begin
-            $display("POF_CALCULATE_SP");
+            if (`K16_TRACE) $display("POF_CALCULATE_SP");
             write <= 0;
             address <= result;
             register[SP] <= result;
@@ -594,20 +596,20 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
           end
         POF_WAIT_READ_MEM:
           begin
-            $display("POF_WAIT_READ_MEM");
+            if (`K16_TRACE) $display("POF_WAIT_READ_MEM");
             write <= 0;
             state <= POF_STORE_READ_MEM;
           end
         POF_STORE_READ_MEM:
           begin
-            $display("POF_STORE_READ_MEM");
+            if (`K16_TRACE) $display("POF_STORE_READ_MEM");
             write <= 0;
             flags <= data_in[3:0];
             state <= FETCH_INSTR;
           end
         JSR_WAIT_WRITE_STACK:
           begin
-            $display("JSR_WAIT_WRITE_STACK");
+            if (`K16_TRACE) $display("JSR_WAIT_WRITE_STACK");
             write <= 0;
             register[destReg] <= result;
             operationType <= `ALU_OP;
@@ -618,7 +620,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
           end
         INTERRUPT_WAIT_WRITE_STACK:
           begin
-            $display("INTERRUPT_WAIT_WRITE_STACK");
+            if (`K16_TRACE) $display("INTERRUPT_WAIT_WRITE_STACK");
             handleInterrupt <= 0;
             write <= 0;
             register[SP] <= result;
@@ -627,7 +629,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
           end
         INTERRUPT_WAIT_ADDRESS:
           begin
-            $display("INTERRUPT_WAIT_ADDRESS");
+            if (`K16_TRACE) $display("INTERRUPT_WAIT_ADDRESS");
             write <= 0;
             state <= INTERRUPT_STORE_ADDRESS;
           end
@@ -641,22 +643,22 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
             write <= 0;
             address <= `CMD_AND_REG_SWITCHES;
             state <= PANEL_WAIT_CTRL_SWITCHES;
-            $display("STOPPED");
+            if (`K16_TRACE) $display("STOPPED");
           end
         PANEL_WAIT_CTRL_SWITCHES:
           begin
-            $display("PANEL_WAIT_CTRL_SWITCHES");
+            if (`K16_TRACE) $display("PANEL_WAIT_CTRL_SWITCHES");
             write <= 0;
             state <= PANEL_DECODE_CTRL_SWITCHES;
           end
         PANEL_DECODE_CTRL_SWITCHES:
           begin
-            $display("PANEL_DECODE_CTRL_SWITCHES data_in: %04X, key_valid: %d", data_in, key_valid);
+            if (`K16_TRACE) $display("PANEL_DECODE_CTRL_SWITCHES data_in: %04X, key_valid: %d", data_in, key_valid);
             if (key_valid && data_in[6:3] == `START)
               begin
-                $display("*****************");
-                $display("* START PRESSED *");
-                $display("*****************");
+                if (`K16_TRACE) $display("*****************");
+                if (`K16_TRACE) $display("* START PRESSED *");
+                if (`K16_TRACE) $display("*****************");
                 write <= 0;
                 address <= `ADDR_SWITCHES;
                 key_valid <= 0;
@@ -664,9 +666,9 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
               end
             else if (key_valid && data_in[6:3] == `CONTINUE)
               begin
-                $display("********************");
-                $display("* CONTINUE PRESSED *");
-                $display("********************");
+                if (`K16_TRACE) $display("********************");
+                if (`K16_TRACE) $display("* CONTINUE PRESSED *");
+                if (`K16_TRACE) $display("********************");
                 write <= 0;
                 running <= 1;
                 address <= register[PC];
@@ -679,9 +681,9 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
               end
             else if (key_valid && data_in[6:3] == `INST_STEP)
               begin
-                $display("*********************");
-                $display("* INST_STEP PRESSED *");
-                $display("*********************");
+                if (`K16_TRACE) $display("*********************");
+                if (`K16_TRACE) $display("* INST_STEP PRESSED *");
+                if (`K16_TRACE) $display("*********************");
                 write <= 0;
                 address <= register[PC];
                 operationType <= `ALU_OP;
@@ -693,9 +695,9 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
               end
             else if (key_valid && data_in[6:3] == `EXAMINE)
               begin
-                $display("*******************");
-                $display("* EXAMINE PRESSED *");
-                $display("*******************");
+                if (`K16_TRACE) $display("*******************");
+                if (`K16_TRACE) $display("* EXAMINE PRESSED *");
+                if (`K16_TRACE) $display("*******************");
                 write <= 0;
                 address <= `ADDR_SWITCHES;
                 key_valid <= 0;
@@ -703,9 +705,9 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
               end
             else if (key_valid && data_in[6:3] == `EXAMINE_NEXT)
               begin
-                $display("************************");
-                $display("* EXAMINE_NEXT PRESSED *");
-                $display("************************");
+                if (`K16_TRACE) $display("************************");
+                if (`K16_TRACE) $display("* EXAMINE_NEXT PRESSED *");
+                if (`K16_TRACE) $display("************************");
                 write <= 0;
                 operationType <= `ALU_OP;
                 operation <= `ADD_OP;
@@ -716,9 +718,9 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
               end
             else if (key_valid && data_in[6:3] == `EXAMINE_REGISTER)
               begin
-                $display("****************************");
-                $display("* EXAMINE_REGISTER PRESSED *");
-                $display("****************************");
+                if (`K16_TRACE) $display("****************************");
+                if (`K16_TRACE) $display("* EXAMINE_REGISTER PRESSED *");
+                if (`K16_TRACE) $display("****************************");
                 write <= 0;
                 address <= `CMD_AND_REG_SWITCHES;
                 key_valid <= 0;
@@ -726,9 +728,9 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
               end
             else if (key_valid && data_in[6:3] == `DEPOSIT)
               begin
-                $display("*******************");
-                $display("* DEPOSIT PRESSED *");
-                $display("*******************");
+                if (`K16_TRACE) $display("*******************");
+                if (`K16_TRACE) $display("* DEPOSIT PRESSED *");
+                if (`K16_TRACE) $display("*******************");
                 write <= 0;
                 address <= `ADDR_SWITCHES;
                 key_valid <= 0;
@@ -736,9 +738,9 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
               end
             else if (key_valid && data_in[6:3] == `DEPOSIT_NEXT)
               begin
-                $display("************************");
-                $display("* DEPOSIT_NEXT PRESSED *");
-                $display("************************");
+                if (`K16_TRACE) $display("************************");
+                if (`K16_TRACE) $display("* DEPOSIT_NEXT PRESSED *");
+                if (`K16_TRACE) $display("************************");
                 write <= 0;
                 address <= `ADDR_SWITCHES;
                 operationType <= `ALU_OP;
@@ -750,9 +752,9 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
               end
             else if (key_valid && data_in[6:3] == `DEPOSIT_REGISTER)
               begin
-                $display("****************************");
-                $display("* DEPOSIT_REGISTER PRESSED *");
-                $display("****************************");
+                if (`K16_TRACE) $display("****************************");
+                if (`K16_TRACE) $display("* DEPOSIT_REGISTER PRESSED *");
+                if (`K16_TRACE) $display("****************************");
                 write <= 0;
                 address <= `CMD_AND_REG_SWITCHES;
                 key_valid <= 0;
@@ -766,13 +768,13 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
           end
         PANEL_START_WAIT_ADDR:
           begin
-            $display("PANEL_START_WAIT_ADDR");
+            if (`K16_TRACE) $display("PANEL_START_WAIT_ADDR");
             write <= 0;
             state <= PANEL_START_SET_ADDR;
           end
         PANEL_START_SET_ADDR:
           begin
-            $display("PANEL_START_WAIT_ADDR");
+            if (`K16_TRACE) $display("PANEL_START_WAIT_ADDR");
             write <= 0;
             running <= 1;
             register[PC] <= data_in;
@@ -785,13 +787,13 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
            end
         PANEL_EXAMINE_WAIT_ADDR:
           begin
-            $display("PANEL_EXAMINE_WAIT_ADDR");
+            if (`K16_TRACE) $display("PANEL_EXAMINE_WAIT_ADDR");
             write <= 0;
             state <= PANEL_EXAMINE_SET_ADDR;
           end
           PANEL_EXAMINE_SET_ADDR:
             begin
-              $display("PANEL_EXAMINE_SET_ADDR");
+              if (`K16_TRACE) $display("PANEL_EXAMINE_SET_ADDR");
               write <= 0;
               register[PC] <= data_in;
               address <= data_in;
@@ -799,7 +801,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
             end
         PANEL_EXAMINE_WAIT_NEXT:
           begin
-            $display("PANEL_EXAMINE_WAIT_NEXT");
+            if (`K16_TRACE) $display("PANEL_EXAMINE_WAIT_NEXT");
             write <= 0;
             register[PC] <= result;
             address <= result;
@@ -807,13 +809,13 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
           end
         PANEL_DEPOSIT_WAIT_DATA:
             begin
-              $display("PANEL_DEPOSIT_WAIT_DATA");
+              if (`K16_TRACE) $display("PANEL_DEPOSIT_WAIT_DATA");
               write <= 0;
               state <= PANEL_DEPOSIT_WRITE_DATA;
             end
         PANEL_DEPOSIT_WRITE_DATA:
           begin
-            $display("PANEL_DEPOSIT_WRITE_DATA");
+            if (`K16_TRACE) $display("PANEL_DEPOSIT_WRITE_DATA");
             write <= 1;
             address <= register[PC];
             data_out <= data_in;
@@ -821,32 +823,32 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
           end
         PANEL_DEPOSIT_WAIT_NEXT:
           begin
-            $display("PANEL_DEPOSIT_WAIT_NEXT");
+            if (`K16_TRACE) $display("PANEL_DEPOSIT_WAIT_NEXT");
             write <= 0;
             register[PC] <= result;
             state <= PANEL_DEPOSIT_WRITE_DATA;
           end
         PANEL_DEPOSIT_WAIT_WRITE_MEM:
           begin
-            $display("PANEL_DEPOSIT_WAIT_WRITE_MEM");
+            if (`K16_TRACE) $display("PANEL_DEPOSIT_WAIT_WRITE_MEM");
             write <= 0;
             state <= STOPPED;
           end
         PANEL_EXAMINE_REG_WAIT_REG:
           begin
-            $display("PANEL_EXAMINE_REG_WAIT_REG");
+            if (`K16_TRACE) $display("PANEL_EXAMINE_REG_WAIT_REG");
             write <= 0;
             state <= PANEL_SHOW_REG;
           end
         PANEL_DEPOSIT_REG_WAIT_REG:
           begin
-            $display("PANEL_DEPOSIT_REG_WAIT_REG - destReg: %d, data_in = %04X", destReg, data_in);
+            if (`K16_TRACE) $display("PANEL_DEPOSIT_REG_WAIT_REG - destReg: %d, data_in = %04X", destReg, data_in);
             write <= 0;
             state <= PANEL_DEPOSIT_REG_FETCH_DATA;
           end
          PANEL_DEPOSIT_REG_FETCH_DATA:
           begin
-            $display("PANEL_DEPOSIT_REG_FETCH_DATA - destReg: %d, data_in = %04X", destReg, data_in);
+            if (`K16_TRACE) $display("PANEL_DEPOSIT_REG_FETCH_DATA - destReg: %d, data_in = %04X", destReg, data_in);
             write <= 0;
             destReg <= data_in[2:0];
             address <= `ADDR_SWITCHES;
@@ -854,13 +856,13 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
           end
         PANEL_DEPOSIT_REG_WAIT_DATA:
           begin
-            $display("PANEL_DEPOSIT_REG_WAIT_DATA - destReg: %d, data_in = %04X", destReg, data_in);
+            if (`K16_TRACE) $display("PANEL_DEPOSIT_REG_WAIT_DATA - destReg: %d, data_in = %04X", destReg, data_in);
             write <= 0;
             state <= PANEL_DEPOSIT_REG_WRITE_DATA;
           end
         PANEL_DEPOSIT_REG_WRITE_DATA:
           begin
-            $display("PANEL_DEPOSIT_REG_WRITE_DATA - destReg: %d, data_in = %04X", destReg, data_in);
+            if (`K16_TRACE) $display("PANEL_DEPOSIT_REG_WRITE_DATA - destReg: %d, data_in = %04X", destReg, data_in);
             write <= 1;
             register[destReg] <= data_in;
             data_out <= data_in;
@@ -869,7 +871,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
           end
         PANEL_SHOW_REG:
           begin
-            $display("PANEL_SHOW_REG");
+            if (`K16_TRACE) $display("PANEL_SHOW_REG");
             write <= 1;
             data_out <= register[data_in[2:0]];
             address <= `DATA_LEDS;
@@ -877,20 +879,20 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
           end
         PANEL_FETCH_DATA:
           begin
-            $display("PANEL_FETCH_DATA");
+            if (`K16_TRACE) $display("PANEL_FETCH_DATA");
             write <= 0;
             address <= register[PC];
             state <= PANEL_WAIT_DATA;
           end
         PANEL_WAIT_DATA:
           begin
-            $display("PANEL_WAIT_DATA");
+            if (`K16_TRACE) $display("PANEL_WAIT_DATA");
             write <= 0;
             state <= PANEL_SHOW_DATA;
           end
         PANEL_SHOW_DATA:
           begin
-            $display("PANEL_SHOW_DATA");
+            if (`K16_TRACE) $display("PANEL_SHOW_DATA");
             write <= 1;
             data_out <= data_in;
             address <= `DATA_LEDS;
@@ -898,14 +900,14 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
           end
         PANEL_SHOW_ADDR:
           begin
-            $display("PANEL_SHOW_ADDR");
+            if (`K16_TRACE) $display("PANEL_SHOW_ADDR");
             write <= 1;
             address <= `ADDR_LEDS;
             data_out <= register[PC];
             state <= STOPPED;
           end
       endcase
-      $display(".  State=%02X,R0=%04X,R1=%04X,R2=%04X,R3=%04X,R4=%04X,R5=%04X,R6=%04X,R7=%04X,C=%B,Z=%B,N=%B,Address=%04x,data_in=%04X,write=%01X",state,register[0],register[1],register[2],register[3],register[4],register[5],register[6],register[7],flags[CARRY],flags[ZERO],flags[NEGATIVE],address,data_in,write);
+      if (`K16_TRACE) $display(".  State=%02X,R0=%04X,R1=%04X,R2=%04X,R3=%04X,R4=%04X,R5=%04X,R6=%04X,R7=%04X,C=%B,Z=%B,N=%B,Address=%04x,data_in=%04X,write=%01X",state,register[0],register[1],register[2],register[3],register[4],register[5],register[6],register[7],flags[CARRY],flags[ZERO],flags[NEGATIVE],address,data_in,write);
     end
 endmodule
 

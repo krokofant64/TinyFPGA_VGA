@@ -1,6 +1,8 @@
  `ifndef ALU_V
 `define ALU_V
 
+`include "K16Trace.vh"
+
 // OPERATION TYPES
 `define ALU_OP   2'b00  // ALU operations
 `define SHIFT_OP 2'b01  // Shift operations
@@ -99,7 +101,7 @@ module K16Alu(operand1, operand2, carryIn, operationType, operation, result, car
         overflowOut = (operand1[15] != operand2[15]) && (result[15] != operand1[15]);
     else
       overflowOut = 1'b0;
-    $display(".  .  operationType=%02B, operation=%02B, operand1=%04X, operand2=%04X, result=%04X, carryOut=%b", operationType, operation, operand1, operand2, result, carryOut);
+    if (`K16_TRACE) $display(".  .  operationType=%02B, operation=%02B, operand1=%04X, operand2=%04X, result=%04X, carryOut=%b", operationType, operation, operand1, operand2, result, carryOut);
   end
 endmodule
 `endif
