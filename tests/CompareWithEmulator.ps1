@@ -5,7 +5,8 @@ of the complete computer, and compares the results.
 
 .DESCRIPTION
 Each program in tests\programs (or the ones given with -Programs) is
-assembled with the emulator's assembler and run from address 0 until HLT,
+compiled with the C compiler (.c files), assembled with the emulator's
+assembler, and run from address 0 until HLT,
 once in the emulator (Windows Script Host) and once in the hardware
 simulation (Icarus Verilog from the apio packages). Registers, flags, RAM,
 and frame buffer must be identical afterwards.
@@ -29,9 +30,9 @@ $ErrorActionPreference = "Continue"
 $repoDir = Split-Path -Parent $PSScriptRoot
 if ($Programs.Count -eq 0)
 {
-   $Programs = Get-ChildItem "$PSScriptRoot\programs\*.asm" | ForEach-Object { $_.FullName }
+   $Programs = Get-ChildItem "$PSScriptRoot\programs\*" -Include *.asm, *.c | ForEach-Object { $_.FullName }
 }
-foreach ($file in "K16Cpu.js", "K16Memory.js", "K16Assembler.js")
+foreach ($file in "K16Cpu.js", "K16Memory.js", "K16Assembler.js", "K16Compiler.js")
 {
    if (-not (Test-Path "$EmulatorDir\$file")) { throw "Emulator not found: $EmulatorDir\$file (use -EmulatorDir)" }
 }

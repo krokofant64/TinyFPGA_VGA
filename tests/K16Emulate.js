@@ -1,11 +1,12 @@
 // ----------------------------------------------------------------------------
-// Runs a K16 assembler program in the JavaScript emulator until HLT and
+// Runs a K16 assembler or C program in the JavaScript emulator until HLT and
 // writes the final state. Used by CompareWithEmulator.ps1.
 //
-// Usage: cscript //nologo K16Emulate.js <emulator folder> <program.asm> <output folder>
+// Usage: cscript //nologo K16Emulate.js <emulator folder> <program.asm or .c> <output folder>
 //
 // Writes to the output folder:
 //   program.vh    the program as Verilog assignments for K16Compare_tb.v
+//   program.asm   the generated assembly code (C programs only)
 //   emulator.txt  registers, flags, RAM, and frame buffer after HLT
 // ----------------------------------------------------------------------------
 
@@ -37,7 +38,7 @@ function fail(theMessage)
 
 if (WScript.Arguments.length != 3)
 {
-   fail("Usage: cscript //nologo K16Emulate.js <emulator folder> <program.asm> <output folder>");
+   fail("Usage: cscript //nologo K16Emulate.js <emulator folder> <program.asm or .c> <output folder>");
 }
 var emulatorFolder = WScript.Arguments(0);
 var programPath = WScript.Arguments(1);
@@ -47,9 +48,35 @@ eval(readFile(emulatorFolder + "\\K16Cpu.js"));
 eval(readFile(emulatorFolder + "\\K16Memory.js"));
 eval(readFile(emulatorFolder + "\\K16Assembler.js"));
 
+var assemblyCode = readFile(programPath);
+if (/\.c$/i.test(programPath))
+{
+   // C program: compile it first, #include files are next to the program
+   var compilerFiles = [ "K16CAst.js", "K16CPreprocessor.js", "K16CLexer.js", "K16CParser.js",
+                         "K16CAnalyzer.js", "K16CCodeGen.js", "K16Compiler.js" ];
+   for (var i = 0; i < compilerFiles.length; i++)
+   {
+      eval(readFile(emulatorFolder + "\\" + compilerFiles[i]));
+   }
+   var programFolder = fso.GetParentFolderName(fso.GetAbsolutePathName(programPath));
+   var compiler = new K16Compiler(function (theName)
+   {
+      var path = programFolder + "\\" + theName;
+      return fso.FileExists(path) ? readFile(path) : undefined;
+   });
+   if (!compiler.compile(assemblyCode, fso.GetFileName(programPath)))
+   {
+      fail("Compiler: " + compiler.errorText());
+   }
+   assemblyCode = compiler.assemblyCode;
+   var assemblyFile = fso.CreateTextFile(outputFolder + "\\program.asm", true);
+   assemblyFile.Write(assemblyCode.replace(/\n/g, "\r\n"));
+   assemblyFile.Close();
+}
+
 // Assemble
 var assembler = new K16Assembler();
-if (assembler.parse(readFile(programPath)) == false)
+if (assembler.parse(assemblyCode) == false)
 {
    fail("Assembler error in line " + assembler.line + ": " + assembler.errorMessage);
 }
