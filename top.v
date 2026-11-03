@@ -79,6 +79,9 @@ module K16Computer(clk_16,
   wire [15:0] io_dout_bus;
   reg  [15:0] io_din_bus;
   reg         io_write;
+
+  wire [15:0] sprite_dout_bus;
+  reg         sprite_write;
   wire stop;
   wire reset;
   wire interrupt;
@@ -128,7 +131,11 @@ module K16Computer(clk_16,
     .vga_B(vga_B),
     .frame_buffer_addr(video_frame_buffer_addr),
     .want_read_frame_buffer(video_reads_frame_buffer),
-    .frame_buffer_data(frame_buffer_dout_bus));
+    .frame_buffer_data(frame_buffer_dout_bus),
+    .reg_addr({cpu_addr_bus[4], cpu_addr_bus[2:0]}),
+    .reg_din(cpu_dout_bus),
+    .reg_write(sprite_write),
+    .reg_dout(sprite_dout_bus));
 
   K16DualPortRam frame_buffer(
     .din(frame_buffer_din_bus),
@@ -190,6 +197,7 @@ module K16Computer(clk_16,
             ram_write <= cpu_write;
             frame_buffer_write <= 0;
             io_write <= 0;
+            sprite_write <= 0;
 
             ram_addr_bus <= cpu_addr_bus[11:0];
             frame_buffer_waddr_bus <= 0;
@@ -206,6 +214,7 @@ module K16Computer(clk_16,
             ram_write <= 0;
             frame_buffer_write <= cpu_write;
             io_write <= 0;
+            sprite_write <= 0;
 
             ram_addr_bus <= 0;
             frame_buffer_waddr_bus <= cpu_addr_bus[10:0];
@@ -222,6 +231,7 @@ module K16Computer(clk_16,
               ram_write <= 0;
               frame_buffer_write <= 0;
               io_write <= 0;
+              sprite_write <= 0;
 
               ram_addr_bus <= 0;
               frame_buffer_waddr_bus <= 0;
@@ -238,6 +248,7 @@ module K16Computer(clk_16,
             ram_write <= 0;
             frame_buffer_write <= 0;
             io_write <= cpu_write;
+            sprite_write <= 0;
 
             ram_addr_bus <= 0;
             frame_buffer_waddr_bus <= 0;
@@ -249,11 +260,30 @@ module K16Computer(clk_16,
             frame_buffer_din_bus <= 0;
             io_din_bus <= cpu_dout_bus;
           end
+        16'b1111111111101???, // Sprite registers FFE8 - FFF7
+        16'b1111111111110???:
+          begin
+            ram_write <= 0;
+            frame_buffer_write <= 0;
+            io_write <= 0;
+            sprite_write <= cpu_write;
+
+            ram_addr_bus <= 0;
+            frame_buffer_waddr_bus <= 0;
+            io_addr_bus <= 0;
+            rom_addr_bus <= 0;
+
+            cpu_din_bus <= sprite_dout_bus;
+            ram_din_bus <= 0;
+            frame_buffer_din_bus <= 0;
+            io_din_bus <= 0;
+          end
         default:
           begin
             ram_write <= 0;
             frame_buffer_write <= 0;
             io_write <= 0;
+            sprite_write <= 0;
 
             ram_addr_bus <= 0;
             frame_buffer_waddr_bus <= 0;

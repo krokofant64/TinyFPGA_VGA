@@ -74,6 +74,8 @@ module K16Compare_tb();
           address = i;
           $fdisplay(f, "FB %04h %04h", address, dut.frame_buffer.mem[i]);
         end
+      for (i = 0; i < 16; i = i + 1)
+        $fdisplay(f, "SPR %0d %04h", i, dut.video.sprite_regs[16 * i +: 16]);
       $fclose(f);
       $finish;
     end

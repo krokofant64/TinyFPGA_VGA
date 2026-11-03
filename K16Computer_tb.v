@@ -39,9 +39,11 @@ module K16Computer_tb();
   integer hold_cycles = 0;
   integer cycles = 0;
 
-  // Every character the video latches must be the frame buffer content
+  // Every character the video latches must be the frame buffer content (not
+  // checked during hpos 640 .. 703, where the video reads the sprite rows)
   always @(posedge clk)
-    if (dut.video.hpos[3:0] == 15 && !dut.frame_buffer_write)
+    if (dut.video.hpos[3:0] == 15 && !dut.frame_buffer_write &&
+        !(dut.video.hpos >= 640 && dut.video.hpos < 704))
       begin
         video_checks = video_checks + 1;
         if (dut.frame_buffer_dout_bus !== dut.frame_buffer.mem[dut.video.frame_buffer_addr])

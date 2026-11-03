@@ -7,7 +7,8 @@
 // Writes to the output folder:
 //   program.vh    the program as Verilog assignments for K16Compare_tb.v
 //   program.asm   the generated assembly code (C programs only)
-//   emulator.txt  registers, flags, RAM, and frame buffer after HLT
+//   emulator.txt  registers, flags, RAM, frame buffer, and sprite registers
+//                 after HLT
 // ----------------------------------------------------------------------------
 
 var fso = new ActiveXObject("Scripting.FileSystemObject");
@@ -88,7 +89,12 @@ for (var i = 0; i < 0x0800; i++)
    frameBuffer[i] = 0;
 }
 var io = { read: function () { return 0; }, write: function () {} };
-var memory = new K16Memory(frameBuffer, io);
+var spriteRegisters = [];
+for (var i = 0; i < 16; i++)
+{
+   spriteRegisters[i] = 0;
+}
+var memory = new K16Memory(frameBuffer, io, spriteRegisters);
 for (var i = 0; i < 0x1000; i++)
 {
    memory.memoryM[i] = 0; // Remove the emulator's demo program
@@ -140,5 +146,9 @@ for (var i = 0; i < 0x1000; i++)
 for (var i = 0; i < 0x0800; i++)
 {
    output.WriteLine("FB " + hex4(i) + " " + hex4(frameBuffer[i]));
+}
+for (var i = 0; i < 16; i++)
+{
+   output.WriteLine("SPR " + i + " " + hex4(spriteRegisters[i]));
 }
 output.Close();
