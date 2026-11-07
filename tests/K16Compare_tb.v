@@ -33,12 +33,15 @@ module K16Compare_tb();
 
   initial
     begin
-      // After the memories' own initial blocks: clear RAM and frame buffer
+      // After the memories' own initial blocks: clear RAM, frame buffer, and
+      // changeable characters
       #1;
       for (i = 0; i < 4096; i = i + 1)
         dut.ram.mem[i] = 16'h0000;
       for (i = 0; i < 2048; i = i + 1)
         dut.frame_buffer.mem[i] = 16'h0000;
+      for (i = 0; i < 512; i = i + 1)
+        dut.video.char_ram.mem[i] = 16'h0000;
 `include "program.vh"
 
       // Power-up values the hardware has, but the simulator does not know
@@ -76,6 +79,8 @@ module K16Compare_tb();
         end
       for (i = 0; i < 16; i = i + 1)
         $fdisplay(f, "SPR %0d %04h", i, dut.video.sprite_regs[16 * i +: 16]);
+      for (i = 0; i < 512; i = i + 1)
+        $fdisplay(f, "CHR %0d %04h", i, dut.video.char_ram.mem[i]);
       $fclose(f);
       $finish;
     end

@@ -11,8 +11,10 @@ once in the emulator (Windows Script Host) and once in the hardware
 simulation (Icarus Verilog from the apio packages). Registers, flags, RAM,
 and frame buffer must be identical afterwards.
 
-The programs must not depend on timing: no interrupts, no cycle counter,
-no switches.
+The results of the programs must not depend on the exact timing, as the
+clocks per instruction differ. The clock counter and the frame interrupt are
+available: c_library_timing.c stores whether measured times are in range. No
+switches.
 
 .EXAMPLE
 .\tests\CompareWithEmulator.ps1

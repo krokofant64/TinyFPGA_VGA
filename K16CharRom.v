@@ -3,11 +3,11 @@
 
 module K16CharRom(character, line, bits);
 
-  input [7:0] character; // ASCII character 0 .. 128
+  input [6:0] character; // ASCII character 0 .. 127
   input [2:0] line;		   // vertical offset (0-7)
   output [7:0] bits;	   // output (8 bits)
 
-  reg [7:0] bitarray[0:128][0:7]; // ROM array (128 x 8 x 8 bits)
+  reg [7:0] bitarray[0:127][0:7]; // ROM array (128 x 8 x 8 bits)
 
   assign bits = bitarray[character][line];	// assign module output
 

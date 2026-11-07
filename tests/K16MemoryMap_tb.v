@@ -1,8 +1,9 @@
 // ----------------------------------------------------------------------------
 // Complete computer (top.v): the memory map. A program reads and writes at
-// the boundaries of RAM (0x0000 .. 0x0FFF), ROM (0xF000 .. 0xF1FF), frame
-// buffer (0x8000 .. 0x87FF), sprite registers (0xFFE8 .. 0xFFF7), and I/O
-// (0xFFF8 .. 0xFFFF), checks that writes
+// the boundaries of RAM (0x0000 .. 0x0FFF), ROM (0xF000 .. 0xF3FF), frame
+// buffer (0x8000 .. 0x87FF), changeable characters (0x8800 .. 0x89FF, write
+// only), sprite registers (0xFFE8 .. 0xFFF7), and I/O (0xFFF8 .. 0xFFFF),
+// checks that writes
 // to ROM and unmapped addresses are ignored and that unmapped addresses
 // read as 0x9FFF (HLT), and finally executes unmapped memory.
 // ----------------------------------------------------------------------------
@@ -71,11 +72,11 @@ module K16MemoryMap_tb();
       dut.ram.mem['h0014] = 16'he080; //          STO R0 [R1]
       dut.ram.mem['h0015] = 16'hc880; //          LD R2 [R1]
       dut.ram.mem['h0016] = 16'hea84; //          STO R2 [R5 +4]          ; still rom[0]
-      dut.ram.mem['h0017] = 16'h64ff; //          LDL R1 0xF1FF.L
-      dut.ram.mem['h0018] = 16'h65f1; //          LDH R1 0xF1FF.H
+      dut.ram.mem['h0017] = 16'h64ff; //          LDL R1 0xF3FF.L
+      dut.ram.mem['h0018] = 16'h65f3; //          LDH R1 0xF3FF.H
       dut.ram.mem['h0019] = 16'hc880; //          LD R2 [R1]
-      dut.ram.mem['h001a] = 16'hea85; //          STO R2 [R5 +5]          ; rom[0x1FF]
-      dut.ram.mem['h001b] = 16'h048c; //          INC R1 R1               ; 0xF200 is not ROM
+      dut.ram.mem['h001a] = 16'hea85; //          STO R2 [R5 +5]          ; rom[0x3FF]
+      dut.ram.mem['h001b] = 16'h048c; //          INC R1 R1               ; 0xF400 is not ROM
       dut.ram.mem['h001c] = 16'hc880; //          LD R2 [R1]
       dut.ram.mem['h001d] = 16'hea86; //          STO R2 [R5 +6]          ; 0x9FFF
       //          ; Frame buffer: first and last word, and the word after it
@@ -88,10 +89,10 @@ module K16MemoryMap_tb();
       dut.ram.mem['h0024] = 16'hec80; //          STO R3 [R1]
       dut.ram.mem['h0025] = 16'hc880; //          LD R2 [R1]
       dut.ram.mem['h0026] = 16'hea88; //          STO R2 [R5 +8]          ; 0xEDCB
-      dut.ram.mem['h0027] = 16'h048c; //          INC R1 R1               ; 0x8800 is not frame buffer
+      dut.ram.mem['h0027] = 16'h048c; //          INC R1 R1               ; 0x8800: first changeable character
       dut.ram.mem['h0028] = 16'he080; //          STO R0 [R1]
       dut.ram.mem['h0029] = 16'hc880; //          LD R2 [R1]
-      dut.ram.mem['h002a] = 16'hea89; //          STO R2 [R5 +9]          ; 0x9FFF
+      dut.ram.mem['h002a] = 16'hea89; //          STO R2 [R5 +9]          ; write only: 0x9FFF
       //          ; 0x7FFF (below the frame buffer) is not mapped
       dut.ram.mem['h002b] = 16'h64ff; //          LDL R1 0x7FFF.L
       dut.ram.mem['h002c] = 16'h657f; //          LDH R1 0x7FFF.H
@@ -138,9 +139,19 @@ module K16MemoryMap_tb();
       dut.ram.mem['h0052] = 16'he080; //          STO R0 [R1]
       dut.ram.mem['h0053] = 16'hc880; //          LD R2 [R1]
       dut.ram.mem['h0054] = 16'hea91; //          STO R2 [R5 +17]         ; 0x9FFF
+      //          ; Changeable characters: last word, and the word after it
+      dut.ram.mem['h0055] = 16'h64ff; //          LDL R1 0x89FF.L
+      dut.ram.mem['h0056] = 16'h6589; //          LDH R1 0x89FF.H
+      dut.ram.mem['h0057] = 16'hec80; //          STO R3 [R1]
+      dut.ram.mem['h0058] = 16'hc880; //          LD R2 [R1]
+      dut.ram.mem['h0059] = 16'hea92; //          STO R2 [R5 +18]         ; write only: 0x9FFF
+      dut.ram.mem['h005a] = 16'h048c; //          INC R1 R1               ; 0x8A00 is not mapped
+      dut.ram.mem['h005b] = 16'hf080; //          STO R4 [R1]             ; R4 = 6
+      dut.ram.mem['h005c] = 16'hc880; //          LD R2 [R1]
+      dut.ram.mem['h005d] = 16'hea93; //          STO R2 [R5 +19]         ; 0x9FFF
       //          ; Execute unmapped memory: reads as HLT
-      dut.ram.mem['h0055] = 16'h6740; //          LDHZ R1 0x40
-      dut.ram.mem['h0056] = 16'h8400; //          JMP [R1]
+      dut.ram.mem['h005e] = 16'h6740; //          LDHZ R1 0x40
+      dut.ram.mem['h005f] = 16'h8400; //          JMP [R1]
       first_instruction = dut.ram.mem[0];
 
       // Power-up values the hardware has, but the simulator does not know
@@ -167,16 +178,22 @@ module K16MemoryMap_tb();
       test_section("Memory map: ROM");
       check_equal(dut.ram.mem[16'h0E03], dut.rom.rom[0], "ROM 0xF000");
       check_equal(dut.ram.mem[16'h0E04], dut.rom.rom[0], "writing ROM is ignored");
-      check_equal(dut.ram.mem[16'h0E05], dut.rom.rom[9'h1FF], "ROM 0xF1FF");
-      check_equal(dut.ram.mem[16'h0E06], 16'h9FFF, "0xF200 reads as 0x9FFF");
+      check_equal(dut.ram.mem[16'h0E05], dut.rom.rom[10'h3FF], "ROM 0xF3FF");
+      check_equal(dut.ram.mem[16'h0E06], 16'h9FFF, "0xF400 reads as 0x9FFF");
 
       test_section("Memory map: frame buffer");
       check_equal(dut.ram.mem[16'h0E07], 16'h1234, "frame buffer 0x8000 read back");
       check_equal(dut.ram.mem[16'h0E08], 16'hEDCB, "frame buffer 0x87FF read back");
-      check_equal(dut.ram.mem[16'h0E09], 16'h9FFF, "0x8800 reads as 0x9FFF");
       check_equal(dut.frame_buffer.mem[0], 16'h1234, "frame buffer word 0 written");
       check_equal(dut.frame_buffer.mem[11'h7FF], 16'hEDCB, "frame buffer word 0x7FF written (not overwritten by 0x8800)");
       check_equal(dut.ram.mem[16'h0E0A], 16'h9FFF, "0x7FFF reads as 0x9FFF");
+
+      test_section("Memory map: changeable characters");
+      check_equal(dut.ram.mem[16'h0E09], 16'h9FFF, "0x8800 reads as 0x9FFF");
+      check_equal(dut.ram.mem[16'h0E12], 16'h9FFF, "0x89FF reads as 0x9FFF");
+      check_equal(dut.video.char_ram.mem[0], 16'h1234, "0x8800 is word 0 (not overwritten by 0x8A00)");
+      check_equal(dut.video.char_ram.mem[511], 16'hEDCB, "0x89FF is word 511");
+      check_equal(dut.ram.mem[16'h0E13], 16'h9FFF, "0x8A00 reads as 0x9FFF");
 
       test_section("Memory map: I/O");
       check_equal(dut.ram.mem[16'h0E0B], 16'h1234, "address LEDs 0xFFFA read back");

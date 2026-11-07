@@ -3,6 +3,7 @@
 
 `include "K16CharRom.v"
 `include "K16HvsyncGenerator.v"
+`include "K16Ram.v"
 
 // Text and four-pixel graphics from the frame buffer, with 8 sprites on top.
 //
@@ -18,8 +19,12 @@
 //
 // The rows for the next line are read from the frame buffer during the
 // horizontal blanking (hpos 640 .. 703, one read every second clock).
+//
+// Characters: 0 .. 127 are fixed (K16CharRom), 128 .. 255 can be changed. The
+// CPU writes them through char_addr, char_din, and char_write; see
+// K16CharacterRam for the format.
 module K16Video(clk, reset, interrupt, hsync, vsync, vga_R, vga_G, vga_B, frame_buffer_addr, want_read_frame_buffer, frame_buffer_data,
-                reg_addr, reg_din, reg_write, reg_dout);
+                reg_addr, reg_din, reg_write, reg_dout, char_addr, char_din, char_write);
   input clk;
   input reset;
   output reg interrupt;
@@ -35,6 +40,9 @@ module K16Video(clk, reset, interrupt, hsync, vsync, vga_R, vga_G, vga_B, frame_
   input  [15:0] reg_din;
   input         reg_write;
   output reg [15:0] reg_dout;
+  input  [8:0]  char_addr;
+  input  [15:0] char_din;
+  input         char_write;
 
   reg vga_R;
   reg vga_G;
@@ -207,7 +215,8 @@ module K16Video(clk, reset, interrupt, hsync, vsync, vga_R, vga_G, vga_B, frame_
   // --------------------------------------------------------------------------
   // Characters and four-pixel blocks
 
-  wire [7:0] char_bits;
+  wire [7:0] rom_bits;
+  wire [15:0] char_ram_data;
 
   reg [15:0] character;
 
@@ -220,9 +229,27 @@ module K16Video(clk, reset, interrupt, hsync, vsync, vga_R, vga_G, vga_B, frame_
     end
 
   K16CharRom rom(
-    .character(character[7:0]),
+    .character(character[6:0]),
     .line(vpos[RANGE_HIGH:RANGE_LOW]),
-    .bits(char_bits));
+    .bits(rom_bits));
+
+  // The output of the character RAM is registered, so it is read one clock
+  // ahead: the character that is about to be loaded, the line that is about
+  // to start. The data has to be valid together with them.
+  wire [6:0] char_ram_character = (hpos[RANGE_HIGH:0] == LAST_PIXEL) ? frame_buffer_data[6:0] : character[6:0];
+  wire [9:0] char_ram_vpos = (hpos == 799) ? next_vpos : vpos;
+
+  K16CharacterRam char_ram(
+    .din(char_din),
+    .write_en(char_write),
+    .waddr(char_addr),
+    .wclk(clk),
+    .raddr({char_ram_character, char_ram_vpos[RANGE_HIGH:RANGE_HIGH - 1]}),
+    .rclk(clk),
+    .dout(char_ram_data));
+
+  wire [7:0] char_ram_bits = vpos[RANGE_LOW] ? char_ram_data[15:8] : char_ram_data[7:0];
+  wire [7:0] char_bits = character[7] ? char_ram_bits : rom_bits;
 
   wire is_4pixel = character[15];
   wire [2:0] pixel0 = character[2:0];

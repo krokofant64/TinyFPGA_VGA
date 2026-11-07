@@ -4,8 +4,9 @@
 // with a 2 line sync pulse after a 10 line front porch), the interrupt at
 // the start of the vertical blanking, the frame buffer read pattern (the
 // CPU stalls while the video reads), and every pixel of a frame with
-// characters in all colors and four-pixel blocks, and then a frame with
-// overlapping sprites (also partly outside the screen, and one disabled).
+// fixed and changeable characters in all colors and four-pixel blocks, and
+// then a frame with changed characters and overlapping sprites (also partly
+// outside the screen, and one disabled).
 // ----------------------------------------------------------------------------
 
 `timescale 1 ns/10 ps
@@ -32,21 +33,26 @@ module K16Video_tb();
   reg  [15:0] reg_din = 0;
   reg         reg_write = 0;
   wire [15:0] reg_dout;
+  reg  [8:0]  char_addr = 0;
+  reg  [15:0] char_din = 0;
+  reg         char_write = 0;
 
   K16Video video(.clk(clk), .reset(1'b0), .interrupt(interrupt), .hsync(hsync), .vsync(vsync),
                  .vga_R(vga_R), .vga_G(vga_G), .vga_B(vga_B),
                  .frame_buffer_addr(frame_buffer_addr), .want_read_frame_buffer(want_read_frame_buffer),
                  .frame_buffer_data(frame_buffer_data),
-                 .reg_addr(reg_addr), .reg_din(reg_din), .reg_write(reg_write), .reg_dout(reg_dout));
+                 .reg_addr(reg_addr), .reg_din(reg_din), .reg_write(reg_write), .reg_dout(reg_dout),
+                 .char_addr(char_addr), .char_din(char_din), .char_write(char_write));
 
-  K16DualPortRam frame_buffer(.din(16'h0000), .write_en(1'b0), .waddr(11'd0), .wclk(clk),
+  K16FrameBufferRam frame_buffer(.din(16'h0000), .write_en(1'b0), .waddr(11'd0), .wclk(clk),
                               .raddr(frame_buffer_addr), .rclk(clk), .dout(frame_buffer_data));
 
   wire [9:0] hpos = video.hpos;
   wire [9:0] vpos = video.vpos;
 
-  // Frame buffer content: characters with all foreground and background
-  // colors, and every 7th cell a block of four pixels
+  // Frame buffer content: all characters with all foreground and background
+  // colors, and every 7th cell a block of four pixels. Every line of every
+  // changeable character is different.
   integer cell_index;
   reg [15:0] word;
   initial
@@ -56,9 +62,11 @@ module K16Video_tb();
           if (cell_index % 7 == 3)
             word = 16'h8000 | (cell_index * 16'h0B6D);   // four pixels
           else
-            word = ((cell_index / 8) % 8 << 11) | (cell_index % 8 << 8) | ((cell_index * 5) % 128);
+            word = ((cell_index / 8) % 8 << 11) | (cell_index % 8 << 8) | ((cell_index * 5) % 256);
           frame_buffer.mem[cell_index] = word;
         end
+      for (cell_index = 0; cell_index < 512; cell_index = cell_index + 1)
+        video.char_ram.mem[cell_index] = 16'h9E37 * (cell_index + 1);
       // Power-up values the hardware has, but the simulator does not know
       video.hvsync_gen.hpos = 0;
       video.hvsync_gen.vpos = 0;
@@ -141,6 +149,7 @@ module K16Video_tb();
     input [9:0] y;
     reg [15:0] w;
     reg [7:0] bits;
+    reg [15:0] char_word;
     reg [3:0] sprite_point;
     begin
       sprite_point = expected_sprite(x, y);
@@ -156,7 +165,13 @@ module K16Video_tb();
         endcase
       else
         begin
-          bits = video.rom.bitarray[w[7:0]][(y / 2) % 8];
+          if (w[7])
+            begin
+              char_word = video.char_ram.mem[{w[6:0], y[3:2]}];
+              bits = y[1] ? char_word[15:8] : char_word[7:0];
+            end
+          else
+            bits = video.rom.bitarray[w[6:0]][(y / 2) % 8];
           expected_pixel = bits[(x / 2) % 8] ? w[10:8] : w[13:11];
         end
     end
@@ -300,7 +315,7 @@ module K16Video_tb();
       check_equal(max_read_run, 2, "video reads for at most 2 clocks");
       check(min_gap_run >= 14, "at least 14 free clocks between reads");
 
-      test_section("Video: pixels of a complete frame");
+      test_section("Video: pixels of a complete frame (fixed and changeable characters)");
       check_equal(pixel_errors, 0, "pixels with the wrong color (of 640 x 480)");
       check_equal(blank_errors, 0, "pixels outside the picture that are not black");
 
@@ -315,6 +330,11 @@ module K16Video_tb();
       write_sprite(5, 16'hFC08, 16'hFE08);        // unused bits set, overlaps 0 and 6
       write_sprite(6, 16'h8000 | 10, 4);          // overlaps 0 and 5
       write_sprite(7, 16'h0000 | 150, 120);       // disabled
+      // Changeable characters, written during the vertical blanking as well
+      write_char(0, 16'hFF81);                    // first word of character 128
+      write_char(511, 16'h7EC3);                  // last word of character 255
+      check_equal(video.char_ram.mem[0], 16'hFF81, "character RAM word 0 written");
+      check_equal(video.char_ram.mem[511], 16'h7EC3, "character RAM word 511 written");
       check_read(10, 16'hFC08, "register 10 (X of sprite 5) read back");
       check_read(11, 16'hFE08, "register 11 (Y of sprite 5) read back");
       check_read(15, 120, "register 15 (Y of sprite 7) read back");
@@ -322,7 +342,7 @@ module K16Video_tb();
       blank_errors = 0;
       wait (frame == 4);
 
-      test_section("Video: frame with sprites");
+      test_section("Video: frame with changed characters and sprites");
       check(sprite_pixels > 1000, "sprite points are visible (more than 1000 pixels)");
       check_equal(pixel_errors, 0, "pixels with the wrong color (of 640 x 480)");
       check_equal(blank_errors, 0, "pixels outside the picture that are not black");
@@ -347,6 +367,18 @@ module K16Video_tb();
       reg_write = 0;
       sprite_x[n] = x;
       sprite_y[n] = y;
+    end
+  endtask
+
+  task write_char;
+    input [8:0] address;
+    input [15:0] value;
+    begin
+      char_addr = address;
+      char_din = value;
+      char_write = 1;
+      @(negedge clk);
+      char_write = 0;
     end
   endtask
 

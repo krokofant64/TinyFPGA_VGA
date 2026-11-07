@@ -10,6 +10,10 @@ trace, and reports which passed.
 With -Emulator, CompareWithEmulator.ps1 also runs (it needs the
 JavaScript emulator, see there).
 
+If the emulator folder exists, the script also checks that the generated
+ROM files and start screen files are up to date (-Check of BuildRom.ps1 and
+BuildBootScreen.ps1).
+
 .EXAMPLE
 .\tests\RunTests.ps1
 .\tests\RunTests.ps1 -Filter Alu
@@ -18,6 +22,7 @@ JavaScript emulator, see there).
 param(
    [string] $Filter = "",
    [switch] $Emulator,
+   [string] $EmulatorDir = "G:\usbwebserver\root\code\K16",
    [string] $IverilogDir = "$env:USERPROFILE\.apio\packages\toolchain-iverilog"
 )
 
@@ -34,6 +39,18 @@ $testbenches = $testbenches | Where-Object { $_.Name -like "*$Filter*" }
 
 $workDir = Join-Path ([IO.Path]::GetTempPath()) "K16Tests"
 $failed = 0
+
+if (Test-Path "$EmulatorDir\K16Rom.asm")
+{
+   & "$PSScriptRoot\BuildRom.ps1" -EmulatorDir $EmulatorDir -Check
+   if ($LASTEXITCODE -ne 0) { $failed++ }
+   & "$PSScriptRoot\BuildBootScreen.ps1" -EmulatorDir $EmulatorDir -Check
+   if ($LASTEXITCODE -ne 0) { $failed++ }
+}
+else
+{
+   Write-Host "K16Rom.asm not found in $EmulatorDir, the generated files are not checked" -ForegroundColor Yellow
+}
 
 # Runs a tool with stdout and stderr in files; returns the exit code
 function Invoke-Tool([string] $Exe, [string[]] $Arguments, [string] $StdOut, [string] $StdErr)

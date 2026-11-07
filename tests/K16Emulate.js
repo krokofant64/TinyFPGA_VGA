@@ -7,8 +7,8 @@
 // Writes to the output folder:
 //   program.vh    the program as Verilog assignments for K16Compare_tb.v
 //   program.asm   the generated assembly code (C programs only)
-//   emulator.txt  registers, flags, RAM, frame buffer, and sprite registers
-//                 after HLT
+//   emulator.txt  registers, flags, RAM, frame buffer, sprite registers, and
+//                 changeable characters after HLT
 // ----------------------------------------------------------------------------
 
 var fso = new ActiveXObject("Scripting.FileSystemObject");
@@ -45,6 +45,7 @@ var emulatorFolder = WScript.Arguments(0);
 var programPath = WScript.Arguments(1);
 var outputFolder = WScript.Arguments(2);
 
+eval(readFile(emulatorFolder + "\\K16RomImage.js"));
 eval(readFile(emulatorFolder + "\\K16Cpu.js"));
 eval(readFile(emulatorFolder + "\\K16Memory.js"));
 eval(readFile(emulatorFolder + "\\K16Assembler.js"));
@@ -82,19 +83,38 @@ if (assembler.parse(assemblyCode) == false)
    fail("Assembler error in line " + assembler.line + ": " + assembler.errorMessage);
 }
 
-// Memory with cleared RAM and frame buffer, without I/O
+// Memory with cleared RAM and frame buffer. Of the I/O, only the clock counter:
+// one count per step. A program must not depend on the exact number of clocks.
+var ticks = 0;
 var frameBuffer = [];
 for (var i = 0; i < 0x0800; i++)
 {
    frameBuffer[i] = 0;
 }
-var io = { read: function () { return 0; }, write: function () {} };
+var io =
+{
+   read: function (theAddress)
+   {
+      switch (theAddress)
+      {
+         case 5: return Math.floor(ticks / 65536) & 0xFFFF;
+         case 6: return ticks & 0xFFFF;
+      }
+      return 0;
+   },
+   write: function () {}
+};
 var spriteRegisters = [];
 for (var i = 0; i < 16; i++)
 {
    spriteRegisters[i] = 0;
 }
-var memory = new K16Memory(frameBuffer, io, spriteRegisters);
+var characterRam = [];
+for (var i = 0; i < 512; i++)
+{
+   characterRam[i] = 0;
+}
+var memory = new K16Memory(frameBuffer, io, spriteRegisters, characterRam);
 for (var i = 0; i < 0x1000; i++)
 {
    memory.memoryM[i] = 0; // Remove the emulator's demo program
@@ -114,12 +134,15 @@ for (var address in assembler.code)
 }
 program.Close();
 
-// Run from address 0 until HLT
+// Run from address 0 until HLT, with a frame interrupt every 800 * 525 clocks
 var cpu = new K16Cpu(memory);
 cpu.runningM = true;
-var ticks = 0;
 while (cpu.runningM && ticks < 20000000)
 {
+   if (ticks % 420000 == 419999)
+   {
+      cpu.interrupt();
+   }
    cpu.clockTick();
    ticks++;
 }
@@ -150,5 +173,9 @@ for (var i = 0; i < 0x0800; i++)
 for (var i = 0; i < 16; i++)
 {
    output.WriteLine("SPR " + i + " " + hex4(spriteRegisters[i]));
+}
+for (var i = 0; i < 512; i++)
+{
+   output.WriteLine("CHR " + i + " " + hex4(characterRam[i]));
 }
 output.Close();

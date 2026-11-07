@@ -72,7 +72,7 @@ module K16Computer(clk_16,
   reg  [15:0] ram_din_bus;
   reg         ram_write;
 
-  reg  [8:0]  rom_addr_bus;
+  reg  [9:0]  rom_addr_bus;
   wire [15:0] rom_dout_bus;
 
   reg  [2:0]  io_addr_bus;
@@ -82,6 +82,11 @@ module K16Computer(clk_16,
 
   wire [15:0] sprite_dout_bus;
   reg         sprite_write;
+
+  // Changeable characters 8800 - 89FF: the CPU can only write them, a read
+  // gets the value of unmapped memory
+  wire        char_write = cpu_write && cpu_addr_bus[15:9] == 7'b1000100;
+
   wire stop;
   wire reset;
   wire interrupt;
@@ -135,9 +140,12 @@ module K16Computer(clk_16,
     .reg_addr({cpu_addr_bus[4], cpu_addr_bus[2:0]}),
     .reg_din(cpu_dout_bus),
     .reg_write(sprite_write),
-    .reg_dout(sprite_dout_bus));
+    .reg_dout(sprite_dout_bus),
+    .char_addr(cpu_addr_bus[8:0]),
+    .char_din(cpu_dout_bus),
+    .char_write(char_write));
 
-  K16DualPortRam frame_buffer(
+  K16FrameBufferRam frame_buffer(
     .din(frame_buffer_din_bus),
     .write_en(frame_buffer_write),
     .waddr(frame_buffer_waddr_bus),
@@ -226,7 +234,7 @@ module K16Computer(clk_16,
             frame_buffer_din_bus <= cpu_dout_bus;
             io_din_bus <= 0;
           end
-          16'b1111000?????????: // ROM F000 - F1FF
+          16'b111100??????????: // ROM F000 - F3FF
             begin
               ram_write <= 0;
               frame_buffer_write <= 0;
@@ -236,7 +244,7 @@ module K16Computer(clk_16,
               ram_addr_bus <= 0;
               frame_buffer_waddr_bus <= 0;
               io_addr_bus <= 0;
-              rom_addr_bus <= cpu_addr_bus[8:0];
+              rom_addr_bus <= cpu_addr_bus[9:0];
 
               cpu_din_bus <= rom_dout_bus;
               ram_din_bus <= 0;
