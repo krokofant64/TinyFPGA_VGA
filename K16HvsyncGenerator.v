@@ -37,8 +37,8 @@ begin
 	vga_VS <= (vpos >= (480 + 10) && (vpos < (480 + 10 + 2)));   // active for 2 lines
 end
 
-// Not registered: the pixels are generated from hpos and vpos directly, a
-// registered display_on would shift the picture by one pixel
+// Not registered: K16Video registers the pixel colors, so they appear one clock
+// after hpos and vpos, at the same time as the registered sync signals
 assign display_on = (hpos < 640) && (vpos < 480);
 
 assign vga_h_sync = ~vga_HS;

@@ -192,6 +192,9 @@ module K16Video_tb();
   integer frame = 0;
   integer sprite_reads = 0, sprite_read_run = 0, max_sprite_read_run = 0;
   integer sprite_pixels = 0;
+  // The colors are registered: the pixel on the pins belongs to the hpos and
+  // vpos of the clock before
+  integer pixel_h = 0, pixel_v = 0;
 
   always @(negedge clk)
     begin
@@ -265,26 +268,28 @@ module K16Video_tb();
       // characters fetched during the blanking before it)
       if (frame == 1 || frame == 3)
         begin
-          if (frame == 3 && hpos < 640 && vpos < 480 && expected_sprite(hpos, vpos) >= 8)
+          if (frame == 3 && pixel_h < 640 && pixel_v < 480 && expected_sprite(pixel_h, pixel_v) >= 8)
             sprite_pixels = sprite_pixels + 1;
-          if (hpos < 640 && vpos < 480)
+          if (pixel_h < 640 && pixel_v < 480)
             begin
-              if ({vga_R, vga_G, vga_B} !== expected_pixel(hpos, vpos))
+              if ({vga_R, vga_G, vga_B} !== expected_pixel(pixel_h, pixel_v))
                 begin
                   pixel_errors = pixel_errors + 1;
                   if (pixel_errors <= 5)
-                    $fdisplay(32'h8000_0002, "  pixel %0d, %0d: color %0d, expected %0d", hpos, vpos,
-                              {vga_R, vga_G, vga_B}, expected_pixel(hpos, vpos));
+                    $fdisplay(32'h8000_0002, "  pixel %0d, %0d: color %0d, expected %0d", pixel_h, pixel_v,
+                              {vga_R, vga_G, vga_B}, expected_pixel(pixel_h, pixel_v));
                 end
             end
           else if ({vga_R, vga_G, vga_B} !== 3'b000)
             begin
               blank_errors = blank_errors + 1;
               if (blank_errors <= 5)
-                $fdisplay(32'h8000_0002, "  blanking at %0d, %0d: color %0d, expected 0", hpos, vpos, {vga_R, vga_G, vga_B});
+                $fdisplay(32'h8000_0002, "  blanking at %0d, %0d: color %0d, expected 0", pixel_h, pixel_v, {vga_R, vga_G, vga_B});
             end
         end
 
+      pixel_h = hpos;
+      pixel_v = vpos;
       previous_hsync = hsync;
       previous_vsync = vsync;
       previous_interrupt = interrupt;
@@ -299,7 +304,9 @@ module K16Video_tb();
       test_section("Video: VGA timing 640 x 480 at 60 Hz");
       check_equal(hsync_period, 800, "clocks per line");
       check_equal(hsync_width, 96, "horizontal sync pulse (clocks)");
-      check(hsync_start_hpos >= 656 && hsync_start_hpos <= 658, "horizontal sync starts 16 clocks after the last pixel");
+      // The last pixel is on the pins while hpos is 640, the sync falls 17
+      // clocks later: 16 clocks front porch, 96 sync, 48 back porch
+      check_equal(hsync_start_hpos, 657, "horizontal sync starts 16 clocks after the last pixel");
       check_equal(vsync_period, 800 * 525, "clocks per frame (525 lines)");
       check_equal(vsync_width, 2 * hsync_period, "vertical sync pulse (2 lines)");
       check_equal(vsync_start_vpos, 490, "vertical sync starts 10 lines after the last line");

@@ -44,9 +44,9 @@ module K16Video(clk, reset, interrupt, hsync, vsync, vga_R, vga_G, vga_B, frame_
   input  [15:0] char_din;
   input         char_write;
 
-  reg vga_R;
-  reg vga_G;
-  reg vga_B;
+  reg vga_R = 0;
+  reg vga_G = 0;
+  reg vga_B = 0;
 
   localparam SCREEN_WIDTH = 640;
   localparam SCREEN_HEIGHT = 480;
@@ -275,9 +275,17 @@ module K16Video(clk, reset, interrupt, hsync, vsync, vga_R, vga_G, vga_B, frame_
         endcase
       else
         color = pixel ? foreground : background;
-      vga_R = display_on && color[2];
-      vga_G = display_on && color[1];
-      vga_B = display_on && color[0];
+    end
+
+  // The color outputs are registered, so the pins change only at the clock
+  // edge and not while the logic above settles (which a monitor can show as
+  // thin lines). The pixel of hpos appears one clock later, like the
+  // registered sync signals of K16HvsyncGenerator.
+  always @(posedge clk)
+    begin
+      vga_R <= display_on && color[2];
+      vga_G <= display_on && color[1];
+      vga_B <= display_on && color[0];
     end
 endmodule
 `endif
