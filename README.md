@@ -10,6 +10,8 @@ The computer has a JavaScript emulator, an assembler and a C compiler, all in th
 
 ## The computer
 
+[doc/K16Architecture.md](doc/K16Architecture.md) shows the modules and their interfaces, the memory map, the state diagrams of the CPU for each instruction type and for the front panel, and the clock cycles of each instruction.
+
 - **CPU:** 16-bit words, word addressing (64K words), one-word instructions.
   - **Registers:** 8 of them. R0 .. R5 are for general use, R6 is the stack pointer (SP) and R7 the program counter (PC).
   - **Flags:**
@@ -78,7 +80,7 @@ Unmapped addresses read as 0x9FFF, which is the HLT instruction.
 | `pins.pcf` | Pin assignments of the TinyFPGA BX: VGA, front panel, sound and status LED. |
 | `apio.ini` | apio project settings (board TinyFPGA-BX). |
 | `K16Cpu_tb.v`, `K16Computer_tb.v` | Testbenches: the CPU running a program, and the complete computer with frame buffer sharing between CPU and video. |
-| `doc/` | PlantUML state diagrams of some instructions. |
+| `doc/` | [K16Architecture.md](doc/K16Architecture.md): module diagram, memory map, CPU state diagrams, and clock cycles (Mermaid). |
 
 ### Tests (`tests/`)
 

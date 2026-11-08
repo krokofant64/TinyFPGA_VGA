@@ -117,6 +117,17 @@ module K16CpuTiming_tb();
       check_equal(cpu.enableInterrupt, 1, "RTI enables interrupts");
       cpu.enableInterrupt = 0;
 
+      test_section("CPU timing: HLT (3 clocks until the CPU is back in the front panel loop)");
+      mem[16'h0100] = 16'h9FFF;
+      start_at(16'h0100);
+      start_cycle = cycles;
+      @(negedge clk);
+      while (cpu.state != cpu.PANEL_FETCH_DATA && cycles - start_cycle < 100)
+        @(negedge clk);
+      check_equal(cycles - start_cycle, 3, "HLT takes 3 clocks");
+      check_equal(cpu.running, 0, "HLT stops the CPU");
+      repeat (20) @(negedge clk);
+
       test_section("CPU timing: interrupt entry (4 clocks to the first instruction of the handler)");
       mem[16'h0FFF] = 16'h0101;   // vector
       cpu.register[6] = 16'h0200;
