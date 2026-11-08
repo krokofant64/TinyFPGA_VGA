@@ -1,7 +1,8 @@
 // ----------------------------------------------------------------------------
 // K16Alu: all operations against a reference model written from the
 // instruction set documentation (result, carry, zero, negative, overflow).
-// Edge values for both operands and the carry, plus random values.
+// Edge values for both operands and the carry, plus random values. Shifts
+// with every count 1 .. 8; the model shifts one bit at a time.
 // ----------------------------------------------------------------------------
 
 `timescale 1 ns/10 ps
@@ -16,6 +17,7 @@ module K16Alu_tb();
   reg         carryIn;
   reg  [1:0]  operationType;
   reg  [2:0]  operation;
+  reg  [2:0]  shiftCount;
   wire [15:0] result;
   wire        carryOut;
   wire        zeroOut;
@@ -23,7 +25,7 @@ module K16Alu_tb();
   wire        overflowOut;
 
   K16Alu alu(.operand1(operand1), .operand2(operand2), .carryIn(carryIn),
-             .operationType(operationType), .operation(operation),
+             .operationType(operationType), .operation(operation), .shiftCount(shiftCount),
              .result(result), .carryOut(carryOut), .zeroOut(zeroOut),
              .negativeOut(negativeOut), .overflowOut(overflowOut));
 
@@ -34,6 +36,8 @@ module K16Alu_tb();
   integer    signed1;
   integer    signed2;
   integer    signedResult;
+  integer    step;
+  reg        bit_out;
 
   task model;
     begin
@@ -71,26 +75,38 @@ module K16Alu_tb();
         5'b00_101: expectedResult = operand1 | operand2;               // OR
         5'b00_110: expectedResult = operand1 ^ operand2;               // XOR
         5'b00_111: expectedResult = ~operand1;                         // NOT
-        // Shift operations
-        5'b01_000: begin // SHR
-                     expectedResult = operand1 >> 1;
-                     expectedCarry = operand1[0];
-                   end
-        5'b01_001: begin // SHL, ASHL
-                     expectedResult = operand1 << 1;
-                     expectedCarry = operand1[15];
-                   end
-        5'b01_010: begin // ASHR
-                     expectedResult = (operand1 >> 1) | (operand1 & 16'h8000);
-                     expectedCarry = operand1[0];
-                   end
-        5'b01_011: begin // ROR
-                     expectedResult = (operand1 >> 1) | (carryIn << 15);
-                     expectedCarry = operand1[0];
-                   end
-        5'b01_100: begin // ROL
-                     expectedResult = (operand1 << 1) | carryIn;
-                     expectedCarry = operand1[15];
+        // Shift operations: shiftCount + 1 single steps
+        5'b01_000, 5'b01_001, 5'b01_010, 5'b01_011, 5'b01_100:
+                   begin
+                     expectedResult = operand1;
+                     for (step = 0; step <= shiftCount; step = step + 1)
+                       case (operation)
+                         3'b000: begin // SHR
+                                   bit_out = expectedResult[0];
+                                   expectedResult = expectedResult >> 1;
+                                   expectedCarry = bit_out;
+                                 end
+                         3'b001: begin // SHL, ASHL
+                                   bit_out = expectedResult[15];
+                                   expectedResult = expectedResult << 1;
+                                   expectedCarry = bit_out;
+                                 end
+                         3'b010: begin // ASHR
+                                   bit_out = expectedResult[0];
+                                   expectedResult = (expectedResult >> 1) | (expectedResult & 16'h8000);
+                                   expectedCarry = bit_out;
+                                 end
+                         3'b011: begin // ROR through the carry
+                                   bit_out = expectedResult[0];
+                                   expectedResult = (expectedResult >> 1) | (expectedCarry << 15);
+                                   expectedCarry = bit_out;
+                                 end
+                         default: begin // ROL through the carry
+                                   bit_out = expectedResult[15];
+                                   expectedResult = (expectedResult << 1) | expectedCarry;
+                                   expectedCarry = bit_out;
+                                 end
+                       endcase
                    end
         // Load operations (register: operand1 = source, operand2 = destination;
         // immediate: operand1 = destination, operand2 = immediate value)
@@ -118,8 +134,8 @@ module K16Alu_tb();
         begin
           test_errors = test_errors + 1;
           if (test_errors <= 25)
-            $fdisplay(32'h8000_0002, "  failed: type %0d operation %0d: %04h, %04h, carry %0d: result %04h C%0d Z%0d N%0d O%0d, expected %04h C%0d Z%0d N%0d O%0d",
-                      operationType, operation, operand1, operand2, carryIn,
+            $fdisplay(32'h8000_0002, "  failed: type %0d operation %0d count %0d: %04h, %04h, carry %0d: result %04h C%0d Z%0d N%0d O%0d, expected %04h C%0d Z%0d N%0d O%0d",
+                      operationType, operation, shiftCount + 1, operand1, operand2, carryIn,
                       result, carryOut, zeroOut, negativeOut, overflowOut,
                       expectedResult, expectedCarry, expectedResult == 0, expectedResult[15], expectedOverflow);
         end
@@ -127,7 +143,7 @@ module K16Alu_tb();
   endtask
 
   reg [15:0] edges[0:13];
-  integer i, j, k, n;
+  integer i, j, k, n, c;
   integer seed;
 
   initial
@@ -142,19 +158,23 @@ module K16Alu_tb();
         for (i = 0; i < 14; i = i + 1)
           for (j = 0; j < 14; j = j + 1)
             for (k = 0; k < 2; k = k + 1)
-              begin
-                {operationType, operation} = n;
-                operand1 = edges[i];
-                operand2 = edges[j];
-                carryIn = k;
-                check_operation;
-              end
+              for (c = 0; c < 8; c = c + 1)
+                if (c == 0 || n[4:3] == 2'b01)   // the count only matters for shifts
+                  begin
+                    {operationType, operation} = n;
+                    shiftCount = c;
+                    operand1 = edges[i];
+                    operand2 = edges[j];
+                    carryIn = k;
+                    check_operation;
+                  end
 
       test_section("ALU: all operations with random values");
       seed = 16;
       for (i = 0; i < 20000; i = i + 1)
         begin
           {operationType, operation} = $random(seed);
+          shiftCount = $random(seed);
           operand1 = $random(seed);
           operand2 = $random(seed);
           carryIn = $random(seed);

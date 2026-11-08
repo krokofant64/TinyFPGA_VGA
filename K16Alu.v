@@ -35,18 +35,29 @@
 `define LDLZI_OP 3'b110
 `define LDHZI_OP 3'b111
 
-module K16Alu(operand1, operand2, carryIn, operationType, operation, result, carryOut, zeroOut, negativeOut, overflowOut);
+// Shift operations shift by shiftCount + 1 (1 .. 8) positions; the carry is
+// the last bit shifted out. ROR and ROL rotate the 17 bits {carry, operand1}.
+module K16Alu(operand1, operand2, carryIn, operationType, operation, shiftCount, result, carryOut, zeroOut, negativeOut, overflowOut);
 
   input [15:0]      operand1;
   input [15:0]      operand2;
   input              carryIn;
   input [1:0]        operationType;
   input [2:0]        operation;
+  input [2:0]        shiftCount;
   output reg         carryOut;
   output reg         zeroOut;
   output reg         negativeOut;
   output reg         overflowOut;
   output reg [15:0] result;
+
+  wire [3:0]  count = {1'b0, shiftCount} + 4'd1;
+  wire [16:0] shifted_right = {operand1, 1'b0} >> count;                     // {result, carry}
+  wire [16:0] shifted_left = {1'b0, operand1} << count;                      // {carry, result}
+  wire [16:0] shifted_arith = $signed({operand1, 1'b0}) >>> count;           // {result, carry}
+  wire [16:0] rotate_in = {carryIn, operand1};
+  wire [16:0] rotated_right = (rotate_in >> count) | (rotate_in << (5'd17 - count));   // {carry, result}
+  wire [16:0] rotated_left = (rotate_in << count) | (rotate_in >> (5'd17 - count));    // {carry, result}
 
   always @(*)
   begin
@@ -64,11 +75,11 @@ module K16Alu(operand1, operand2, carryIn, operationType, operation, result, car
     else
     if (operationType == `SHIFT_OP)
       case (operation)
-        `SHR_OP:   {carryOut, result} = {operand1[0], 1'b0, operand1[15:1]};
-        `SHL_OP:   {carryOut, result} = {operand1, 1'b0};
-        `ASHR_OP:  {carryOut, result} = {operand1[0], operand1[15], operand1[15], operand1[14:1]};
-        `ROR_OP:   {carryOut, result} = {operand1[0], carryIn, operand1[15:1]};
-        `ROL_OP:   {carryOut, result} = {operand1, carryIn};
+        `SHR_OP:   {carryOut, result} = {shifted_right[0], shifted_right[16:1]};
+        `SHL_OP:   {carryOut, result} = shifted_left;
+        `ASHR_OP:  {carryOut, result} = {shifted_arith[0], shifted_arith[16:1]};
+        `ROR_OP:   {carryOut, result} = rotated_right;
+        `ROL_OP:   {carryOut, result} = rotated_left;
         default:   {carryOut, result} = {carryIn, operand1};
       endcase
     else

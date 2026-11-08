@@ -1,8 +1,9 @@
 // ----------------------------------------------------------------------------
 // K16Cpu: interrupts. Entry (push PC, clear I, jump to the vector at 0x0FFF),
-// return, requests ignored while interrupts are disabled and in the handler,
-// a request while hold is active, a request while the CPU is stopped, and a
-// stress test with random interrupt requests and random hold clocks.
+// return with RTI (keeps the flags) and with SEI + RET, requests ignored while
+// interrupts are disabled and in the handler, a request during CLI, a request
+// while hold is active, a request while the CPU is stopped, and a stress test
+// with random interrupt requests and random hold clocks.
 //
 // Every test runs the same workload, which must produce the same results as
 // without interrupts: the handler must not change registers or flags.
@@ -18,6 +19,8 @@ module K16CpuInterrupt_tb();
 
   localparam ISR       = 16'h001E;   // address of Isr
   localparam ISR_COUNT = 16'h0028;   // address of IsrCount
+
+  reg use_rti = 1;   // the handler returns with RTI, else with SEI + RET
 
   task load_program;
     begin
@@ -66,8 +69,11 @@ module K16CpuInterrupt_tb();
       mem['h0023] = 16'h000e; //          CMP R0 R0               ; changes the flags (restored by POF)
       mem['h0024] = 16'h200d; //          POP R0
       mem['h0025] = 16'h200f; //          POF
-      mem['h0026] = 16'h200b; //          SEI
-      mem['h0027] = 16'h3c0d; //          RET
+      if (use_rti)
+        mem['h0026] = 16'h3c1d; //        RTI
+      else
+        mem['h0026] = 16'h200b; //        SEI
+      mem['h0027] = 16'h3c0d; //          RET   (after SEI only)
       mem['h0028] = 16'h0000; // IsrCount: .data 0
     end
   endtask
@@ -197,10 +203,45 @@ module K16CpuInterrupt_tb();
       // A request in the handler (interrupts disabled) is ignored
       request_interrupt;
       wait_fetch(return_address);
-      check_equal(cpu.register[7], return_address, "RET returns to the interrupted instruction");
-      check_equal(cpu.enableInterrupt, 1, "handler enabled interrupts again");
+      check_equal(cpu.register[7], return_address, "RTI returns to the interrupted instruction");
+      check_equal(cpu.enableInterrupt, 1, "RTI enabled interrupts again");
       check_results("one interrupt");
       check_equal(entries, 1, "no nested interrupt");
+
+      test_section("Interrupts: RTI keeps all flags, RET changes Z and N");
+      for (i = 0; i < 2; i = i + 1)
+        begin
+          use_rti = (i == 0);
+          start_program;
+          wait_enabled;
+          repeat (37) @(negedge clk);
+          request_interrupt;
+          wait_fetch(ISR);
+          return_address = mem[cpu.register[6] + 1];
+          cpu.flags = 4'b1111;   // O Z N C as the interrupted program left them
+          wait_fetch(return_address);
+          if (use_rti)
+            check_equal(cpu.flags, 4'b1111, "RTI: flags of the interrupted program");
+          else
+            check_equal(cpu.flags, 4'b1001, "SEI + RET: Z and N come from the return address");
+          cpu.flags = 4'b0000;   // let the workload continue unchanged
+        end
+      use_rti = 1;
+
+      test_section("Interrupts: a request during CLI is not taken");
+      start_program;
+      wait_enabled;
+      // CLI at 0x0011 is decoded while the PC is 0x0012
+      while (!(cpu.state == cpu.DECODE_INSTR && cpu.register[7] == 16'h0012))
+        @(negedge clk);
+      interrupt = 1;
+      @(negedge clk);
+      interrupt = 0;
+      wait_halt(200000);
+      check_equal(halted, 1, "program halted");
+      check_equal(entries, 0, "no interrupt after CLI");
+      check_equal(cpu.handleInterrupt, 0, "CLI dropped the request");
+      check_equal(cpu.enableInterrupt, 0, "interrupts stay disabled");
 
       test_section("Interrupts: request while hold is active");
       start_program;
@@ -232,8 +273,9 @@ module K16CpuInterrupt_tb();
       check_equal(entries, 1, "handled after CONTINUE");
 
       test_section("Interrupts: random interrupt requests and hold clocks");
-      for (seed = 1; seed <= 3; seed = seed + 1)
+      for (seed = 1; seed <= 4; seed = seed + 1)
         begin
+          use_rti = seed <= 2;   // both kinds of return
           start_program;
           stress = 1;
           wait_halt(400000);

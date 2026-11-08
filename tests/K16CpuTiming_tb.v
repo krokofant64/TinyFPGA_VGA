@@ -66,12 +66,19 @@ module K16CpuTiming_tb();
       check_cycles(16'h080B, 4, "SWP R2 R0");
       check_cycles(16'h080C, 4, "INC R2 R0");
       check_cycles(16'h080F, 4, "DEC R2 R0");
+      check_cycles(16'h087C, 4, "INC R2 R0 8");
+      check_cycles(16'h087F, 4, "DEC R2 R0 8");
       check_cycles(16'h001E, 4, "CMP R0 R1");
       check_cycles(16'h2800, 4, "SHR R2 R0");
       check_cycles(16'h2801, 4, "SHL R2 R0");
       check_cycles(16'h2802, 4, "ASHR R2 R0");
       check_cycles(16'h2803, 4, "ROR R2 R0");
       check_cycles(16'h2804, 4, "ROL R2 R0");
+      check_cycles(16'h2870, 4, "SHR R2 R0 8");
+      check_cycles(16'h2871, 4, "SHL R2 R0 8");
+      check_cycles(16'h2872, 4, "ASHR R2 R0 8");
+      check_cycles(16'h2873, 4, "ROR R2 R0 8");
+      check_cycles(16'h2874, 4, "ROL R2 R0 8");
       check_cycles(16'h6812, 4, "LDL R2 0x12");
       check_cycles(16'h6912, 4, "LDH R2 0x12");
       check_cycles(16'h6A12, 4, "LDLZ R2 0x12");
@@ -105,12 +112,17 @@ module K16CpuTiming_tb();
       cpu.register[6] = 16'h0200;
       mem[16'h0201] = 16'h0101;   // return address
       check_cycles(16'h3C0D, 6, "RET");
+      cpu.register[6] = 16'h0200;
+      check_cycles(16'h3C1D, 6, "RTI");
+      check_equal(cpu.enableInterrupt, 1, "RTI enables interrupts");
+      cpu.enableInterrupt = 0;
 
       test_section("CPU timing: interrupt entry (4 clocks to the first instruction of the handler)");
       mem[16'h0FFF] = 16'h0101;   // vector
       cpu.register[6] = 16'h0200;
       mem[16'h0100] = 16'h9FFF;
       start_at(16'h0100);
+      cpu.enableInterrupt = 1;
       cpu.handleInterrupt = 1;
       start_cycle = cycles;
       @(negedge clk);

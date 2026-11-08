@@ -113,6 +113,8 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
   reg [15:0]  operand2;
   wire [15:0] result;
   reg [2:0]   operation;
+  reg [2:0]   shiftCount;      // shift instructions: bits 6 .. 4, shift by shiftCount + 1
+  reg         returnFromInterrupt = 0; // RTI: the POP sets I and leaves the flags
   reg [1:0]   operationType;
   reg         running = 0;
   reg         handleInterrupt = 0;
@@ -129,6 +131,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
     .carryIn(flags[CARRY]),
     .operationType(operationType),
     .operation(operation),
+    .shiftCount(shiftCount),
     .result(result),
     .carryOut(carryOut),
     .zeroOut(zeroOut),
@@ -196,6 +199,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
              flags[OVERFLOW] <= 0;
              enableInterrupt <= 0;
              handleInterrupt <= 0;
+             returnFromInterrupt <= 0;
              running <= 0;
              state <= FETCH_INSTR;
            end
@@ -204,7 +208,8 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
              if (`K16_TRACE) $display("FETCH_INSTR");
              if (running)
                begin
-                 if (handleInterrupt == 0)
+                 // An interrupt latched while a CLI executed is not taken
+                 if (handleInterrupt == 0 || enableInterrupt == 0)
                    begin
                      write <= 0;
                      address <= register[PC];
@@ -286,11 +291,12 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                 16'b000?????????1100:
                   begin
                     if (`K16_TRACE) $display("DECODE_INSTR - INC");
+                    // INC Rd Rs n: n - 1 in bits 6 .. 4
                     write <= 0;
                     operationType <= `ALU_OP;
                     operation <= `ADD_OP;
                     operand1 <= register[data_in[9:7]];
-                    operand2 <= 16'h0001;
+                    operand2 <= {13'b0, data_in[6:4]} + 16'h0001;
                     destReg <= data_in[12:10];
                     state <= STORE_RESULT;
                   end
@@ -307,11 +313,12 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                 16'b000?????????1111:
                   begin
                     if (`K16_TRACE) $display("DECODE_INSTR - DEC");
+                    // DEC Rd Rs n: n - 1 in bits 6 .. 4
                     write <= 0;
                     operationType <= `ALU_OP;
                     operation <= `SUB_OP;
                     operand1 <= register[data_in[9:7]];
-                    operand2 <= 16'h0001;
+                    operand2 <= {13'b0, data_in[6:4]} + 16'h0001;
                     destReg <= data_in[12:10];
                     state <= STORE_RESULT;
                   end
@@ -321,6 +328,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                     write <= 0;
                     operationType <= `SHIFT_OP;
                     operation <= {data_in[2:0]};
+                    shiftCount <= data_in[6:4];
                     operand1 <= register[data_in[9:7]];
                     destReg <= data_in[12:10];
                     state <= STORE_RESULT_AND_CARRY;
@@ -336,6 +344,8 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                     else
                       begin
                         enableInterrupt <= data_in[0];
+                        if (data_in[0] == 1'b0)
+                          handleInterrupt <= 0; // CLI drops a latched request
                       end
                     state <= FETCH_INSTR;
                   end
@@ -368,6 +378,8 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
                   16'b001?????????1101:
                     begin
                       if (`K16_TRACE) $display("DECODE_INSTR -  POP");
+                      // RTI is POP PC with bit 4 set
+                      returnFromInterrupt <= data_in[4];
                       write <= 0;
                       operationType <= `ALU_OP;
                       operation <= `ADD_OP;
@@ -553,8 +565,17 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
              if (`K16_TRACE) $display("STORE_READ_MEM");
              write <= 0;
              register[destReg] <= data_in;
-             flags[ZERO] <= data_in == 16'h0000 ? 1'b1 : 1'b0;
-             flags[NEGATIVE] <= data_in[15] == 1'b1 ? 1'b1 : 1'b0;
+             if (returnFromInterrupt)
+               begin
+                 // RTI: enable interrupts, keep the flags of the interrupted program
+                 enableInterrupt <= 1;
+                 returnFromInterrupt <= 0;
+               end
+             else
+               begin
+                 flags[ZERO] <= data_in == 16'h0000 ? 1'b1 : 1'b0;
+                 flags[NEGATIVE] <= data_in[15] == 1'b1 ? 1'b1 : 1'b0;
+               end
              state <= FETCH_INSTR;
            end
          STO_CALC_MEM_ADDR:
