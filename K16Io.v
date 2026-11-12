@@ -3,7 +3,7 @@
 
 `include "K16Trace.vh"
 
-module K16Io(din, addr, write_en, clk, dout, stop, reset, io_leds, io_clk, io_addr, io_switches, io_reg_switches, sound);
+module K16Io(din, addr, write_en, clk, dout, stop, reset, io_leds, io_clk, io_addr, io_switches, io_reg_switches, psg_level, sound);
   input [2:0]       addr;
   input [15:0]      din;
   input             write_en;
@@ -16,7 +16,8 @@ module K16Io(din, addr, write_en, clk, dout, stop, reset, io_leds, io_clk, io_ad
   output reg [2:0]  io_addr = 0;
   input  [3:0]      io_switches;
   input  [2:0]      io_reg_switches;
-  output reg        sound = 0;
+  input  [9:0]      psg_level;     // Sum of the sound chip's channels (K16Psg), 0 .. 765
+  output reg        sound = 0;     // 1-bit DAC output (sigma-delta): needs an RC low-pass filter
 
   reg [15:0] addr_leds = 0;
   reg [15:0] data_leds = 0;
@@ -27,6 +28,8 @@ module K16Io(din, addr, write_en, clk, dout, stop, reset, io_leds, io_clk, io_ad
   reg [15:0] sound_divisor = 0;
   reg [19:0] io_clck_counter = 0;
   reg [21:0] sound_counter = 0;
+  reg        square = 0;           // The square wave of SOUND_DIVISOR
+  reg [9:0]  dac_sum = 0;
 
   parameter DIVISOR = 25000000 / 50; // I/O scan clock: 50 Hz (a parameter for faster simulation)
   always @(posedge clk)
@@ -40,8 +43,14 @@ module K16Io(din, addr, write_en, clk, dout, stop, reset, io_leds, io_clk, io_ad
        if (sound_divisor != 0 && sound_counter >= {sound_divisor, 5'b0})
          begin
            sound_counter <= 26'd0;
-           sound = ~sound;
+           square <= ~square;
         end
+       if (sound_divisor == 0)
+         square <= 0;
+       // First-order sigma-delta DAC: the share of 1s on the pin is
+       // level / 1024, where level is the sound chip plus the square wave
+       // (at the level of a channel at full volume)
+       {sound, dac_sum} <= {1'b0, dac_sum} + {1'b0, psg_level} + (square ? 11'd255 : 11'd0);
     end
 
   always @(posedge io_clk)
@@ -188,6 +197,9 @@ always @(posedge io_clk)
             dout <= sound_divisor;
           end
       endcase
+      // RESET switches the sound off (the square wave stops with divisor 0)
+      if (reset)
+        sound_divisor <= 0;
     end
 endmodule
 

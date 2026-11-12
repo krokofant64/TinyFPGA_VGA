@@ -2,7 +2,8 @@
 // Complete computer (top.v): the memory map. A program reads and writes at
 // the boundaries of RAM (0x0000 .. 0x0FFF), ROM (0xF000 .. 0xF3FF), frame
 // buffer (0x8000 .. 0x87FF), changeable characters (0x8800 .. 0x89FF, write
-// only), sprite registers (0xFFE8 .. 0xFFF7), and I/O (0xFFF8 .. 0xFFFF),
+// only), sound chip (0xFFD0 .. 0xFFDF), sprite registers (0xFFE8 .. 0xFFF7),
+// and I/O (0xFFF8 .. 0xFFFF),
 // checks that writes
 // to ROM and unmapped addresses are ignored and that unmapped addresses
 // read as 0x9FFF (HLT), and finally executes unmapped memory.
@@ -149,9 +150,25 @@ module K16MemoryMap_tb();
       dut.ram.mem['h005b] = 16'hf080; //          STO R4 [R1]             ; R4 = 6
       dut.ram.mem['h005c] = 16'hc880; //          LD R2 [R1]
       dut.ram.mem['h005d] = 16'hea93; //          STO R2 [R5 +19]         ; 0x9FFF
+      //           ; Sound chip: R0 (8 bits) and R13 (4 bits) read back; 0xFFCF and
+      //           ; 0xFFE0 (below and above) are not mapped
+      dut.ram.mem['h005e] = 16'h64d0; //          LDL R1 0xFFD0.L
+      dut.ram.mem['h005f] = 16'h65ff; //          LDH R1 0xFFD0.H
+      dut.ram.mem['h0060] = 16'he080; //          STO R0 [R1]
+      dut.ram.mem['h0061] = 16'hc880; //          LD R2 [R1]
+      dut.ram.mem['h0062] = 16'hea94; //          STO R2 [R5 +20]
+      dut.ram.mem['h0063] = 16'he08d; //          STO R0 [R1 +13]
+      dut.ram.mem['h0064] = 16'hc88d; //          LD R2 [R1 +13]
+      dut.ram.mem['h0065] = 16'hea95; //          STO R2 [R5 +21]
+      dut.ram.mem['h0066] = 16'h048f; //          DEC R1 R1
+      dut.ram.mem['h0067] = 16'hc880; //          LD R2 [R1]
+      dut.ram.mem['h0068] = 16'hea96; //          STO R2 [R5 +22]
+      dut.ram.mem['h0069] = 16'h64e0; //          LDL R1 0xFFE0.L
+      dut.ram.mem['h006a] = 16'hc880; //          LD R2 [R1]
+      dut.ram.mem['h006b] = 16'hea97; //          STO R2 [R5 +23]
       //          ; Execute unmapped memory: reads as HLT
-      dut.ram.mem['h005e] = 16'h6740; //          LDHZ R1 0x40
-      dut.ram.mem['h005f] = 16'h8400; //          JMP [R1]
+      dut.ram.mem['h006c] = 16'h6740; //          LDHZ R1 0x40
+      dut.ram.mem['h006d] = 16'h8400; //          JMP [R1]
       first_instruction = dut.ram.mem[0];
 
       // Power-up values the hardware has, but the simulator does not know
@@ -209,6 +226,14 @@ module K16MemoryMap_tb();
       check_equal(dut.video.sprite_regs[255:240], 16'hEDCB, "0xFFF7 is register 15 (Y of sprite 7)");
       check(dut.video.sprite_regs[239:16] == 0, "the other sprite registers are unchanged");
       check_equal(dut.ram.mem[16'h0E11], 16'h9FFF, "0xFFE7 reads as 0x9FFF");
+
+      test_section("Memory map: sound chip");
+      check_equal(dut.ram.mem[16'h0E14], 16'h0034, "0xFFD0 (R0, 8 bits) read back");
+      check_equal(dut.ram.mem[16'h0E15], 16'h0004, "0xFFDD (R13, 4 bits) read back");
+      check_equal(dut.psg.r0, 8'h34, "0xFFD0 is register R0");
+      check_equal(dut.psg.r13, 4'h4, "0xFFDD is register R13");
+      check_equal(dut.ram.mem[16'h0E16], 16'h9FFF, "0xFFCF reads as 0x9FFF");
+      check_equal(dut.ram.mem[16'h0E17], 16'h9FFF, "0xFFE0 reads as 0x9FFF");
 
       test_section("Memory map: executing unmapped memory");
       check_equal(dut.cpu.register[7], 16'h4001, "0x4000 executes as HLT");

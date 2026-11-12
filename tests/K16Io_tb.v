@@ -2,7 +2,8 @@
 // K16Io: scanning of the switch matrix (address switches, control switches
 // with inverted inputs, register knob), the command code for the CPU
 // (0xFFFC) including the priority, STOP and RESET, multiplexing of the
-// LEDs, the cycle counter, and the sound divider.
+// LEDs, the cycle counter, the sound divider, and the sigma-delta DAC on the
+// sound pin.
 //
 // The I/O scan clock is 8 clocks instead of 500000 (parameter DIVISOR).
 // ----------------------------------------------------------------------------
@@ -31,6 +32,7 @@ module K16Io_tb();
   wire        io_clk;
   wire [2:0]  io_addr;
   wire        sound;
+  reg  [9:0]  psg_level = 0;
   reg  [2:0]  io_reg_switches = 0;
 
   // Switch matrix: line n (io_addr) returns nibble n; lines 0 .. 3 are the
@@ -43,7 +45,7 @@ module K16Io_tb();
   K16Io #(.DIVISOR(DIVISOR)) io(.din(din), .addr(addr), .write_en(write_en), .clk(clk), .dout(dout),
                                 .stop(io_stop), .reset(io_reset), .io_leds(io_leds), .io_clk(io_clk),
                                 .io_addr(io_addr), .io_switches(io_switches),
-                                .io_reg_switches(io_reg_switches), .sound(sound));
+                                .io_reg_switches(io_reg_switches), .psg_level(psg_level), .sound(sound));
 
   task read;
     input [2:0] register;
@@ -98,6 +100,7 @@ module K16Io_tb();
   integer start;
   integer toggle1;
   integer toggle2;
+  integer ones;
   reg [3:0] expected_leds;
 
   initial
@@ -198,19 +201,75 @@ module K16Io_tb();
       write(7, 16'd10);
       read(7, value);
       check_equal(value, 16'd10, "0xFFFF divisor read back");
-      @(sound);
+      @(io.square);
       start = $time;
-      @(sound);
+      @(io.square);
       toggle1 = ($time - start) / 40;
-      @(sound);
+      @(io.square);
       toggle2 = ($time - start) / 40 - toggle1;
       $sformat(test_message, "half period = 32 * divisor clocks (+-1), got %0d and %0d", toggle1, toggle2);
       check(toggle1 >= 319 && toggle1 <= 321 && toggle2 >= 319 && toggle2 <= 321, test_message);
+      // The square wave alone: 255 of 1024 clocks are 1 while it is high
+      wait (io.square == 1);
+      repeat (2) @(negedge clk);
+      ones = 0;
+      for (i = 0; i < 256; i = i + 1)
+        begin
+          @(negedge clk);
+          ones = ones + sound;
+        end
+      $sformat(test_message, "DAC with the square wave high: 1s in 256 clocks, got %0d", ones);
+      check(ones >= 62 && ones <= 65, test_message);
       write(7, 16'd0);
       repeat (100) @(negedge clk);
-      value = sound;
-      repeat (2000) @(negedge clk);
-      check_equal(sound, value, "divisor 0 stops the sound");
+      ones = 0;
+      for (i = 0; i < 2000; i = i + 1)
+        begin
+          @(negedge clk);
+          ones = ones + sound;
+        end
+      check_equal(ones, 0, "divisor 0 stops the sound (pin stays 0)");
+
+      test_section("I/O: RESET stops the sound");
+      write(7, 16'd10);
+      repeat (1000) @(negedge clk);
+      control_switches = 16'h0008;
+      scan;
+      control_switches = 16'h0000;
+      scan;
+      read(7, value);
+      check_equal(value, 16'd0, "divisor 0 after RESET");
+      repeat (100) @(negedge clk);
+      ones = 0;
+      for (i = 0; i < 2000; i = i + 1)
+        begin
+          @(negedge clk);
+          ones = ones + sound;
+        end
+      check_equal(ones, 0, "pin stays 0 after RESET");
+
+      test_section("I/O: sigma-delta DAC");
+      psg_level = 10'd300;
+      repeat (10) @(negedge clk);
+      ones = 0;
+      for (i = 0; i < 4096; i = i + 1)
+        begin
+          @(negedge clk);
+          ones = ones + sound;
+        end
+      $sformat(test_message, "level 300: 1s in 4096 clocks = 1200 (+-2), got %0d", ones);
+      check(ones >= 1198 && ones <= 1202, test_message);
+      psg_level = 10'd765;
+      repeat (10) @(negedge clk);
+      ones = 0;
+      for (i = 0; i < 1024; i = i + 1)
+        begin
+          @(negedge clk);
+          ones = ones + sound;
+        end
+      $sformat(test_message, "level 765: 1s in 1024 clocks (+-2), got %0d", ones);
+      check(ones >= 763 && ones <= 767, test_message);
+      psg_level = 0;
 
       test_done;
     end

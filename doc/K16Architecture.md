@@ -35,7 +35,8 @@ flowchart TB
     ram["K16SinglePortRam: 4096 words"]
     fb["K16FrameBufferRam: 2048 words"]
     rom["K16Rom: 1024 words"]
-    io["K16Io"]
+    io["K16Io: I/O and sigma-delta DAC"]
+    psg["K16Psg: sound chip"]
 
     pins_clk --> pll
     pll -->|"clk (25 MHz)"| cpu_box
@@ -50,6 +51,9 @@ flowchart TB
     rom -->|"dout"| decoder
     decoder -->|"addr[2:0], din, write_en"| io
     io -->|"dout"| decoder
+    decoder -->|"addr[3:0], din[7:0], write_en"| psg
+    psg -->|"dout[7:0]"| decoder
+    psg -->|"level[9:0]"| io
     decoder -->|"reg_addr[3:0], reg_din, reg_write, char_addr[8:0], char_din, char_write"| video_box
     video_box -->|"reg_dout"| decoder
     video_box -->|"frame_buffer_addr[10:0], want_read_frame_buffer"| fb
@@ -76,7 +80,8 @@ flowchart TB
 | `K16FrameBufferRam` | `K16Ram.v` | write port for the CPU, one read port for video and CPU | 2048 words: text, pixel blocks, sprite images; at power-up the start screen. |
 | `K16SinglePortRam` | `K16Ram.v` | `addr[11:0]`, `din`, `write_en`, `dout` | The 4096-word RAM with the default program. |
 | `K16Rom` | `K16Rom.v` | `addr[9:0]`, `dout` | The 1024-word ROM library (generated from `K16Rom.asm`). |
-| `K16Io` | `K16Io.v` | `addr[2:0]`, `din`, `write_en`, `dout`; panel pins; `stop`, `reset`, `sound` | Front panel scanning (switches and LEDs), clock counter, sound divider, and the STOP and RESET keys. |
+| `K16Io` | `K16Io.v` | `addr[2:0]`, `din`, `write_en`, `dout`; panel pins; `psg_level[9:0]`; `stop`, `reset`, `sound` | Front panel scanning (switches and LEDs), clock counter, sound divider, the sigma-delta DAC for the sound pin (sound chip plus square wave), and the STOP and RESET keys. |
+| `K16Psg` | `K16Psg.v` | `addr[3:0]`, `din[7:0]`, `write_en`, `dout[7:0]`; `level[9:0]` | The sound chip like the AY-3-8910: three tone channels, noise, mixer, volume, envelope; `level` is the sum of the channels (0 .. 765). |
 
 All block RAMs have a registered output: the data of an address appears one clock after the address. This is why the CPU has a wait state after every memory address it sets.
 
@@ -88,6 +93,7 @@ All block RAMs have a registered output: the data of an address appears one cloc
 | `0x8000 .. 0x87FF` | `1000 0xxx xxxx xxxx` | Frame buffer (`0x8600 .. 0x87FF` are the sprite images) |
 | `0x8800 .. 0x89FF` | `1000 100x xxxx xxxx` | Changeable characters, write only |
 | `0xF000 .. 0xF3FF` | `1111 00xx xxxx xxxx` | ROM |
+| `0xFFD0 .. 0xFFDF` | `1111 1111 1101 xxxx` | Sound chip registers R0 .. R15 (R14, R15 read 0) |
 | `0xFFE8 .. 0xFFF7` | `1111 1111 1110 1xxx`, `1111 1111 1111 0xxx` | Sprite registers |
 | `0xFFF8 .. 0xFFFF` | `1111 1111 1111 1xxx` | I/O: address switches, control switches, address LEDs, data LEDs, register switches, counter high, counter low, sound |
 | all others | | read as `0x9FFF` (HLT), writes are ignored |

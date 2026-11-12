@@ -3,6 +3,7 @@
 `include "K16Ram.v"
 `include "K16Rom.v"
 `include "K16Io.v"
+`include "K16Psg.v"
 
 module K16Computer(clk_16,
             vga_h_sync,
@@ -82,6 +83,11 @@ module K16Computer(clk_16,
 
   wire [15:0] sprite_dout_bus;
   reg         sprite_write;
+
+  // Sound chip FFD0 - FFDF (registers R0 .. R15 of the AY-3-8910)
+  wire [7:0]  psg_dout_bus;
+  wire [9:0]  psg_level;
+  wire        psg_write = cpu_write && cpu_addr_bus[15:4] == 12'hFFD;
 
   // Changeable characters 8800 - 89FF: the CPU can only write them, a read
   // gets the value of unmapped memory
@@ -180,7 +186,17 @@ module K16Computer(clk_16,
     .io_addr({io_addr2, io_addr1, io_addr0}),
     .io_switches({sw_col4, sw_col3, sw_col2, sw_col1}),
     .io_reg_switches({sw_reg3, sw_reg2, sw_reg1}),
+    .psg_level(psg_level),
     .sound(sound));
+
+  K16Psg psg(
+    .clk(clk),
+    .reset(reset),
+    .addr(cpu_addr_bus[3:0]),
+    .din(cpu_dout_bus[7:0]),
+    .write_en(psg_write),
+    .dout(psg_dout_bus),
+    .level(psg_level));
 
   K16Cpu cpu(
     .clk(clk),
@@ -282,6 +298,23 @@ module K16Computer(clk_16,
             rom_addr_bus <= 0;
 
             cpu_din_bus <= sprite_dout_bus;
+            ram_din_bus <= 0;
+            frame_buffer_din_bus <= 0;
+            io_din_bus <= 0;
+          end
+        16'b111111111101????: // Sound chip FFD0 - FFDF
+          begin
+            ram_write <= 0;
+            frame_buffer_write <= 0;
+            io_write <= 0;
+            sprite_write <= 0;
+
+            ram_addr_bus <= 0;
+            frame_buffer_waddr_bus <= 0;
+            io_addr_bus <= 0;
+            rom_addr_bus <= 0;
+
+            cpu_din_bus <= {8'h00, psg_dout_bus};
             ram_din_bus <= 0;
             frame_buffer_din_bus <= 0;
             io_din_bus <= 0;
