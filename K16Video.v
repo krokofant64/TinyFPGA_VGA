@@ -16,6 +16,7 @@
 // Registers (reg_addr): 2 * n     = X of sprite n: bit 15 enable, bits 9 .. 0 X
 //                       2 * n + 1 = Y of sprite n: bits 8 .. 0 Y
 // X and Y are signed and count points (0, 0 .. 319, 239 is the screen).
+// RESET clears all registers (all sprites off), like at power-up.
 //
 // The rows for the next line are read from the frame buffer during the
 // horizontal blanking (hpos 640 .. 703, one read every second clock).
@@ -75,9 +76,12 @@ module K16Video(clk, reset, interrupt, hsync, vsync, vga_R, vga_G, vga_B, frame_
 
   reg [255:0] sprite_regs = 0; // Register i in bits 16 * i + 15 .. 16 * i
 
+  // RESET clears all registers like at power-up: all sprites off
   always @(posedge clk)
     begin
-      if (reg_write)
+      if (reset)
+        sprite_regs <= 0;
+      else if (reg_write)
         sprite_regs[{reg_addr, 4'b0000} +: 16] <= reg_din;
       reg_dout <= sprite_regs[{reg_addr, 4'b0000} +: 16];
     end

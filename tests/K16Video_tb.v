@@ -36,8 +36,9 @@ module K16Video_tb();
   reg  [8:0]  char_addr = 0;
   reg  [15:0] char_din = 0;
   reg         char_write = 0;
+  reg         video_reset = 0;
 
-  K16Video video(.clk(clk), .reset(1'b0), .interrupt(interrupt), .hsync(hsync), .vsync(vsync),
+  K16Video video(.clk(clk), .reset(video_reset), .interrupt(interrupt), .hsync(hsync), .vsync(vsync),
                  .vga_R(vga_R), .vga_G(vga_G), .vga_B(vga_B),
                  .frame_buffer_addr(frame_buffer_addr), .want_read_frame_buffer(want_read_frame_buffer),
                  .frame_buffer_data(frame_buffer_data),
@@ -266,7 +267,7 @@ module K16Video_tb();
 
       // Pixels of the second frame (the first one starts without the
       // characters fetched during the blanking before it)
-      if (frame == 1 || frame == 3)
+      if (frame == 1 || frame == 3 || frame == 4)
         begin
           if (frame == 3 && pixel_h < 640 && pixel_v < 480 && expected_sprite(pixel_h, pixel_v) >= 8)
             sprite_pixels = sprite_pixels + 1;
@@ -355,6 +356,25 @@ module K16Video_tb();
       check_equal(blank_errors, 0, "pixels outside the picture that are not black");
       check_equal(sprite_reads, expected_sprite_reads(0), "sprite row reads: 4 per sprite and screen line");
       check_equal(max_sprite_read_run, 1, "sprite rows are read every second clock");
+
+      // RESET during the vertical blanking before the picture of frame 4: all sprites off
+      test_section("Video: RESET switches the sprites off");
+      @(negedge clk);
+      video_reset = 1;
+      @(negedge clk);
+      video_reset = 0;
+      for (sprite_index = 0; sprite_index < 16; sprite_index = sprite_index + 1)
+        check_read(sprite_index, 0, "register after RESET");
+      for (sprite_index = 0; sprite_index < 8; sprite_index = sprite_index + 1)
+        begin
+          sprite_x[sprite_index] = 0;
+          sprite_y[sprite_index] = 0;
+        end
+      pixel_errors = 0;
+      blank_errors = 0;
+      wait (frame == 5);
+      check_equal(pixel_errors, 0, "pixels with the wrong color in the next frame (no sprites)");
+      check_equal(blank_errors, 0, "pixels outside the picture that are not black");
 
       test_done;
     end
