@@ -118,3 +118,5 @@ set_io sound      B7
 set_io statusR    A7
 set_io statusG    B6
 set_io statusB    A6
+set_io serial_tx  G1   # PIN_25 (pad on the bottom): to the RXD input of the level converter
+set_io -pullup yes serial_rx J3   # PIN_26 (pad on the bottom): from the TXD output of the level converter

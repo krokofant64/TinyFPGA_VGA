@@ -156,11 +156,16 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
         key_valid <= 1;
       end
     else
+    begin
+    // An interrupt request (the frame pulse of the video or the level of the
+    // serial port) is latched while interrupts are enabled. The state
+    // machine goes on in the same clock: a level request must not stop it.
+    // States that clear handleInterrupt (CLI, the interrupt itself) come
+    // later in this block and win.
     if (interrupt && enableInterrupt)
       begin
         handleInterrupt <= 1;
       end
-    else
     if (hold)
       begin
         // Wait until the memory data is valid (e.g. frame buffer read port
@@ -929,6 +934,7 @@ module K16Cpu(clk, reset, stop, interrupt, hold, busy,
           end
       endcase
       if (`K16_TRACE) $display(".  State=%02X,R0=%04X,R1=%04X,R2=%04X,R3=%04X,R4=%04X,R5=%04X,R6=%04X,R7=%04X,C=%B,Z=%B,N=%B,Address=%04x,data_in=%04X,write=%01X",state,register[0],register[1],register[2],register[3],register[4],register[5],register[6],register[7],flags[CARRY],flags[ZERO],flags[NEGATIVE],address,data_in,write);
+    end
     end
 endmodule
 

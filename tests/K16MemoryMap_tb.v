@@ -27,12 +27,14 @@ module K16MemoryMap_tb();
   always #20 clk = ~clk; // 25 MHz
 
   wire hs, vs, r, g, b, l0, l1, l2, l3, ioclk, a0, a1, a2, snd, sR, sG, sB;
+  wire stx;
   K16Computer dut(.clk_16(clk), .vga_h_sync(hs), .vga_v_sync(vs), .vga_R(r), .vga_G(g), .vga_B(b),
                   .io_led0(l0), .io_led1(l1), .io_led2(l2), .io_led3(l3), .io_clk(ioclk),
                   .io_addr0(a0), .io_addr1(a1), .io_addr2(a2),
                   .sw_col4(1'b1), .sw_col3(1'b1), .sw_col2(1'b1), .sw_col1(1'b1),
                   .sw_reg3(1'b0), .sw_reg2(1'b0), .sw_reg1(1'b0),
-                  .sound(snd), .statusR(sR), .statusG(sG), .statusB(sB));
+                  .sound(snd), .statusR(sR), .statusG(sG), .statusB(sB),
+                  .serial_tx(stx), .serial_rx(1'b1));
 
   integer i;
   reg [15:0] first_instruction;
@@ -150,8 +152,8 @@ module K16MemoryMap_tb();
       dut.ram.mem['h005b] = 16'hf080; //          STO R4 [R1]             ; R4 = 6
       dut.ram.mem['h005c] = 16'hc880; //          LD R2 [R1]
       dut.ram.mem['h005d] = 16'hea93; //          STO R2 [R5 +19]         ; 0x9FFF
-      //           ; Sound chip: R0 (8 bits) and R13 (4 bits) read back; 0xFFCF and
-      //           ; 0xFFE0 (below and above) are not mapped
+      //           ; Sound chip: R0 (8 bits) and R13 (4 bits) read back; 0xFFCF (below) is
+      //           ; not mapped, 0xFFE0 (above) is the serial port
       dut.ram.mem['h005e] = 16'h64d0; //          LDL R1 0xFFD0.L
       dut.ram.mem['h005f] = 16'h65ff; //          LDH R1 0xFFD0.H
       dut.ram.mem['h0060] = 16'he080; //          STO R0 [R1]
@@ -233,7 +235,7 @@ module K16MemoryMap_tb();
       check_equal(dut.psg.r0, 8'h34, "0xFFD0 is register R0");
       check_equal(dut.psg.r13, 4'h4, "0xFFDD is register R13");
       check_equal(dut.ram.mem[16'h0E16], 16'h9FFF, "0xFFCF reads as 0x9FFF");
-      check_equal(dut.ram.mem[16'h0E17], 16'h9FFF, "0xFFE0 reads as 0x9FFF");
+      check_equal(dut.ram.mem[16'h0E17], 16'h0000, "0xFFE0 is the serial port (DATA of the empty buffer: 0)");
 
       test_section("Memory map: executing unmapped memory");
       check_equal(dut.cpu.register[7], 16'h4001, "0x4000 executes as HLT");

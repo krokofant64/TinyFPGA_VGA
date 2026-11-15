@@ -4,6 +4,7 @@
 `include "K16Rom.v"
 `include "K16Io.v"
 `include "K16Psg.v"
+`include "K16Serial.v"
 
 module K16Computer(clk_16,
             vga_h_sync,
@@ -29,7 +30,9 @@ module K16Computer(clk_16,
             sound,
             statusR,
             statusG,
-            statusB);
+            statusB,
+            serial_tx,
+            serial_rx);
 
   input clk_16;
   output vga_h_sync;
@@ -56,6 +59,8 @@ module K16Computer(clk_16,
   output statusR;
   output statusG;
   output statusB;
+  output serial_tx;
+  input  serial_rx;
 
   reg  [10:0] frame_buffer_waddr_bus;
   wire [10:0] frame_buffer_raddr_bus;
@@ -93,9 +98,14 @@ module K16Computer(clk_16,
   // gets the value of unmapped memory
   wire        char_write = cpu_write && cpu_addr_bus[15:9] == 7'b1000100;
 
+  // Serial port FFE0 - FFE3
+  wire        serial_select = cpu_addr_bus[15:2] == 14'b11111111111000;
+  wire [15:0] serial_dout_bus;
+  wire        serial_irq;
+
   wire stop;
   wire reset;
-  wire interrupt;
+  wire interrupt;           // Frame interrupt of the video (one clock)
   wire hold;
   wire busy;
 
@@ -198,11 +208,25 @@ module K16Computer(clk_16,
     .dout(psg_dout_bus),
     .level(psg_level));
 
+  K16Serial serial(
+    .clk(clk),
+    .reset(reset),
+    .select(serial_select),
+    .addr(cpu_addr_bus[1:0]),
+    .write(cpu_write),
+    .din(cpu_dout_bus),
+    .dout(serial_dout_bus),
+    .frame(interrupt),
+    .irq(serial_irq),
+    .rx(serial_rx),
+    .tx(serial_tx));
+
+  // The frame interrupt is a pulse, the serial interrupt a level
   K16Cpu cpu(
     .clk(clk),
     .reset(reset),
     .stop(stop),
-    .interrupt(interrupt),
+    .interrupt(interrupt | serial_irq),
     .hold(hold),
     .busy(busy),
     .address(cpu_addr_bus),
@@ -315,6 +339,23 @@ module K16Computer(clk_16,
             rom_addr_bus <= 0;
 
             cpu_din_bus <= {8'h00, psg_dout_bus};
+            ram_din_bus <= 0;
+            frame_buffer_din_bus <= 0;
+            io_din_bus <= 0;
+          end
+        16'b11111111111000??: // Serial port FFE0 - FFE3 (K16Serial decodes its accesses itself)
+          begin
+            ram_write <= 0;
+            frame_buffer_write <= 0;
+            io_write <= 0;
+            sprite_write <= 0;
+
+            ram_addr_bus <= 0;
+            frame_buffer_waddr_bus <= 0;
+            io_addr_bus <= 0;
+            rom_addr_bus <= 0;
+
+            cpu_din_bus <= serial_dout_bus;
             ram_din_bus <= 0;
             frame_buffer_din_bus <= 0;
             io_din_bus <= 0;

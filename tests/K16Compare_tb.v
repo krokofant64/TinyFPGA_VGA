@@ -20,12 +20,14 @@ module K16Compare_tb();
   always #20 clk = ~clk; // 25 MHz
 
   wire hs, vs, r, g, b, l0, l1, l2, l3, ioclk, a0, a1, a2, snd, sR, sG, sB;
+  wire stx;
   K16Computer dut(.clk_16(clk), .vga_h_sync(hs), .vga_v_sync(vs), .vga_R(r), .vga_G(g), .vga_B(b),
                   .io_led0(l0), .io_led1(l1), .io_led2(l2), .io_led3(l3), .io_clk(ioclk),
                   .io_addr0(a0), .io_addr1(a1), .io_addr2(a2),
                   .sw_col4(1'b1), .sw_col3(1'b1), .sw_col2(1'b1), .sw_col1(1'b1),
                   .sw_reg3(1'b0), .sw_reg2(1'b0), .sw_reg1(1'b0),
-                  .sound(snd), .statusR(sR), .statusG(sG), .statusB(sB));
+                  .sound(snd), .statusR(sR), .statusG(sG), .statusB(sB),
+                  .serial_tx(stx), .serial_rx(1'b1));
 
   integer i;
   integer f;

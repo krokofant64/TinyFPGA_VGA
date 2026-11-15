@@ -13,6 +13,7 @@ flowchart TB
     pins_panel(["Front panel: io_led0..3, io_clk, io_addr0..2, sw_col1..4, sw_reg1..3"])
     pins_sound(["sound"])
     pins_status(["statusR, statusG, statusB"])
+    pins_serial(["serial_tx, serial_rx"])
 
     pll["SB_PLL40_CORE: 16 to 25 MHz"]
     decoder["Address decoder (always block in top.v)"]
@@ -37,6 +38,7 @@ flowchart TB
     rom["K16Rom: 1024 words"]
     io["K16Io: I/O and sigma-delta DAC"]
     psg["K16Psg: sound chip"]
+    serial["K16Serial: serial port and INT_CAUSE"]
 
     pins_clk --> pll
     pll -->|"clk (25 MHz)"| cpu_box
@@ -54,6 +56,10 @@ flowchart TB
     decoder -->|"addr[3:0], din[7:0], write_en"| psg
     psg -->|"dout[7:0]"| decoder
     psg -->|"level[9:0]"| io
+    decoder -->|"select, addr[1:0], write, din"| serial
+    serial -->|"dout"| decoder
+    video_box -->|"interrupt (frame flag)"| serial
+    serial -->|"irq (level), ORed with the frame interrupt"| cpu
     decoder -->|"reg_addr[3:0], reg_din, reg_write, char_addr[8:0], char_din, char_write"| video_box
     video_box -->|"reg_dout"| decoder
     video_box -->|"frame_buffer_addr[10:0], want_read_frame_buffer"| fb
@@ -65,6 +71,7 @@ flowchart TB
     video_box --> pins_vga
     io <--> pins_panel
     io --> pins_sound
+    serial <--> pins_serial
     cpu --> pins_status
 ```
 
@@ -82,6 +89,7 @@ flowchart TB
 | `K16Rom` | `K16Rom.v` | `addr[9:0]`, `dout` | The 1024-word ROM library (generated from `K16Rom.asm`). |
 | `K16Io` | `K16Io.v` | `addr[2:0]`, `din`, `write_en`, `dout`; panel pins; `psg_level[9:0]`; `stop`, `reset`, `sound` | Front panel scanning (switches and LEDs), clock counter, sound divider, the sigma-delta DAC for the sound pin (sound chip plus square wave), and the STOP and RESET keys. |
 | `K16Psg` | `K16Psg.v` | `addr[3:0]`, `din[7:0]`, `write_en`, `dout[7:0]`; `level[9:0]` | The sound chip like the AY-3-8910: three tone channels, noise, mixer, volume, envelope; `level` is the sum of the channels (0 .. 765). |
+| `K16Serial` | `K16Serial.v` | `select`, `addr[1:0]`, `write`, `din`, `dout`; `frame`; `irq`; `rx`, `tx` | The serial port (8N1, 300 .. 115200 baud, 16-byte receive buffer) and INT_CAUSE. It finds the CPU's accesses itself: a write in its first clock, a read when the CPU leaves the address. |
 
 All block RAMs have a registered output: the data of an address appears one clock after the address. This is why the CPU has a wait state after every memory address it sets.
 
@@ -94,6 +102,7 @@ All block RAMs have a registered output: the data of an address appears one cloc
 | `0x8800 .. 0x89FF` | `1000 100x xxxx xxxx` | Changeable characters, write only |
 | `0xF000 .. 0xF3FF` | `1111 00xx xxxx xxxx` | ROM |
 | `0xFFD0 .. 0xFFDF` | `1111 1111 1101 xxxx` | Sound chip registers R0 .. R15 (R14, R15 read 0) |
+| `0xFFE0 .. 0xFFE3` | `1111 1111 1110 00xx` | Serial port: DATA, STATUS, CONTROL, INT_CAUSE |
 | `0xFFE8 .. 0xFFF7` | `1111 1111 1110 1xxx`, `1111 1111 1111 0xxx` | Sprite registers |
 | `0xFFF8 .. 0xFFFF` | `1111 1111 1111 1xxx` | I/O: address switches, control switches, address LEDs, data LEDs, register switches, counter high, counter low, sound |
 | all others | | read as `0x9FFF` (HLT), writes are ignored |
@@ -110,8 +119,9 @@ The `always` block of `K16Cpu` checks these conditions first. Each of them repla
 |---|---|
 | `reset` | `state ← RESET`, `running ← 0`, `key_valid ← 1` |
 | `stop` | `running ← 0`, `key_valid ← 1`; the CPU finishes the instruction and then goes to the front panel |
-| `interrupt && enableInterrupt` | `handleInterrupt ← 1`; the state machine waits one clock |
 | `hold` | the state machine waits (frame buffer data not valid yet) |
+
+Beside these, in every clock, `interrupt && enableInterrupt` sets `handleInterrupt ← 1` without stopping the state machine. So a level request, like the serial port's, is taken at the next instruction fetch and can't freeze the CPU.
 
 ### Fetch, decode, and interrupt entry
 
@@ -293,7 +303,6 @@ From one instruction fetch to the next, at 25 MHz (one clock = 40 ns). They are 
 
 **Extra clocks:**
 - **Frame buffer reads:** a read waits while the video uses the read port (`hold`), up to 2 clocks.
-- **Interrupt request:** the clock in which a request is latched adds one clock to the instruction that is running.
 
 ## Front panel
 

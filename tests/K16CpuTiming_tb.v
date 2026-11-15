@@ -146,7 +146,7 @@ module K16CpuTiming_tb();
       cpu.running = 0;
       repeat (20) @(negedge clk);
 
-      test_section("CPU timing: hold and an interrupt request freeze the CPU");
+      test_section("CPU timing: hold freezes the CPU, an interrupt request does not");
       cpu.register[0] = 16'h1234;
       cpu.register[1] = 16'h1111;
       mem[16'h0100] = 16'h0810;   // ADD R2 R0 R1
@@ -165,7 +165,7 @@ module K16CpuTiming_tb();
       cpu.running = 0;
       repeat (20) @(negedge clk);
 
-      cpu.enableInterrupt = 1;    // the request is latched in an extra clock
+      cpu.enableInterrupt = 1;    // the request is latched without an extra clock (a level request must not stop the CPU)
       mem[16'h0FFF] = 16'h0101;
       cpu.register[6] = 16'h0200;
       start_at(16'h0100);
@@ -177,7 +177,7 @@ module K16CpuTiming_tb();
       interrupt = 0;
       while (cpu.state != cpu.FETCH_INSTR && cycles - start_cycle < 100)
         @(negedge clk);
-      check_equal(cycles - start_cycle, 4 + 1, "ADD with an interrupt request takes 5 clocks");
+      check_equal(cycles - start_cycle, 4, "ADD with an interrupt request takes 4 clocks");
       check_equal(cpu.register[2], 16'h2345, "ADD result with an interrupt request");
       check_equal(cpu.handleInterrupt, 1, "interrupt request latched");
       cpu.running = 0;

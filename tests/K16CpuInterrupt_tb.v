@@ -272,6 +272,25 @@ module K16CpuInterrupt_tb();
       check_results("while stopped");
       check_equal(entries, 1, "handled after CONTINUE");
 
+      // A level request (like the serial port's) stays 1 until the device is
+      // served: here until the third handler entry. It must not stop the
+      // CPU, and after each RTI the program goes on before the next entry.
+      test_section("Interrupts: a level request");
+      start_program;
+      interrupt = 1;                 // already before SEI
+      i = 0;                         // workload instructions between entries
+      while (entries < 3 && cycles < 200000)
+        begin
+          @(negedge clk);
+          if (entries == 2 && cpu.state == cpu.DECODE_INSTR && cpu.register[7] <= ISR && cpu.register[7] > 16'h0000)
+            i = i + 1;
+        end
+      interrupt = 0;                 // the device was served
+      check_equal(entries, 3, "three entries while the level is 1");
+      check(i > 0, "the program goes on between two entries");
+      check_results("level request");
+      check_equal(entries, 3, "no entry after the level went to 0");
+
       test_section("Interrupts: random interrupt requests and hold clocks");
       for (seed = 1; seed <= 4; seed = seed + 1)
         begin
