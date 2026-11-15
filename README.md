@@ -31,7 +31,7 @@ The computer has a JavaScript emulator, an assembler and a C compiler, all in th
   - **Flags:** CLC, SEC, CLI, SEI
   - **Stop:** HLT
 - **ROM library:** routines for C and assembler: arithmetic, strings, text, scrolling, graphics, sprites, sound, time, interrupts and the serial port.
-- **Monitor:** a monitor like WOZMON in ROM at 0xF400. Over the serial port it shows and changes memory, loads programs (the website's "Generate Monitor" writes them in its format) and runs them. Start it with the data switches at F400 and START. The website's terminal talks to it over Web Serial (Chrome or Edge), and its "Send program" loads the program line by line.
+- **Monitor:** a monitor like WOZMON in ROM at 0xF400. Over the serial port it shows and changes memory, reports lost characters, loads programs (the website's "Generate Monitor" writes them in its format) and runs them. Start it with the data switches at F400 and START. The website's terminal talks to it over Web Serial (Chrome or Edge), and its "Send program" loads the program line by line.
 - **Clock:** 25 MHz, from the PLL out of the board's 16 MHz oscillator.
 - **Video:**
   - **Text:** 40 x 30 characters in 8 colors. Characters 0 .. 127 are fixed, the program can change characters 128 .. 255.
@@ -57,7 +57,7 @@ The computer has a JavaScript emulator, an assembler and a C compiler, all in th
 | Address | Size | Content |
 |---|---|---|
 | `0x0000 .. 0x0FFF` | 4096 words | RAM. The stack starts at 0x0FFE; 0x0FFF holds the interrupt vector |
-| `0x8000 .. 0x87FF` | 2048 words | Frame buffer. 0x8000 .. 0x84AF is the 40 x 30 screen, 0x8500 .. 0x8508 the variables of the ROM library and the monitor, 0x8580 .. 0x85D0 the monitor's line buffer, 0x8600 .. 0x87FF the sprite images |
+| `0x8000 .. 0x87FF` | 2048 words | Frame buffer. 0x8000 .. 0x84AF is the 40 x 30 screen, 0x8500 .. 0x8509 the variables of the ROM library and the monitor, 0x8580 .. 0x85D0 the monitor's line buffer, 0x8600 .. 0x87FF the sprite images |
 | `0x8800 .. 0x89FF` | 512 words | Changeable characters 128 .. 255, write only: 4 words per character |
 | `0xF000 .. 0xF5FF` | 1536 words | ROM: the library at 0xF000, the monitor at 0xF400 |
 | `0xFFD0 .. 0xFFDF` | 16 words | Sound chip: the AY's registers R0 .. R13 (0xFFDE and 0xFFDF read 0) |

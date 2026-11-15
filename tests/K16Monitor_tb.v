@@ -194,8 +194,10 @@ module K16Monitor_tb();
 
       test_section("Monitor: run");
       line("800R\015");
-      expect_text("800R\015\012\015\012", "800R runs RET and comes back");
-      check_equal(dut.cpu.register[6], 16'h0FFD, "SP after the return: 0x0FFE, minus the call of SerialRead");
+      expect_text("800R\015\012\015\012R0=0000\015\012", "800R runs RET, comes back, and shows R0");
+      // The monitor waits in SerialReadLine (call, R2, R4, R5), SerialRead, and maybe
+      // Serial_Status (call, R0, R3): SP is 0x0FF6 .. 0x0FF9, and the stack did not grow
+      check(dut.cpu.register[6] >= 16'h0FF6 && dut.cpu.register[6] <= 16'h0FF9, "SP after the return: the stack did not grow");
       line("800\015");
       expect_text("800\015\0120800: 3C0D\015\012", "the monitor still answers");
 
@@ -205,7 +207,7 @@ module K16Monitor_tb();
       line("3\015");
       expect_text("12\010 \0103\015\0120013: 0000\015\012", "Backspace");
       line("7f0\015");
-      expect_text("7F0\015\01207F0: AAAA\015\012", "lower case");
+      expect_text("7f0\015\01207F0: AAAA\015\012", "lower case: echo as typed");
       send_text("800: 9999");
       send_byte(8'h1B);
       wait_quiet;
