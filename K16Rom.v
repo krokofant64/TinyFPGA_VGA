@@ -2,14 +2,14 @@
 `define K16ROM_V
 
 // Generated from K16Rom.asm by tests\BuildRom.ps1. Do not edit.
-module K16Rom (addr, clk, dout);// 1024x16
-  parameter addr_width = 10;
+module K16Rom (addr, clk, dout);// 1536x16
+  parameter addr_width = 11;
   parameter data_width = 16;
   input [addr_width-1:0] addr;
   input clk;
   output [data_width-1:0] dout;
   reg [data_width-1:0] dout; // Register for output.
-  reg [data_width-1:0] rom [(1<<addr_width)-1:0];
+  reg [data_width-1:0] rom [1535:0];
   always @(posedge clk)
     begin
       dout <= rom[addr]; // Output register controlled by clock.
@@ -17,7 +17,7 @@ module K16Rom (addr, clk, dout);// 1024x16
   initial
     begin
     // ;------------------------------------------------------------------------------
-    // ; K16 ROM library, 0xF000 .. 0xF3FF
+    // ; K16 ROM library 0xF000 .. 0xF3FF, and the monitor 0xF400 .. 0xF5FF
     // ;
     // ; This file is the source of the ROM. tests\BuildRom.ps1 in the Verilog repository
     // ; assembles it into K16Rom.v (hardware) and K16RomImage.js (emulator).
@@ -1261,6 +1261,413 @@ rom[939] = 16'h090c; //               INC R2 R2
 rom[940] = 16'h9ffb; //               JMP SerialPrint_Loop
 rom[941] = 16'h280d; // SerialPrint_Done: POP R2
 rom[942] = 16'h3c0d; //               RET
+    // 
+    // ;------------------------------------------------------------------------------
+    // ; Monitor at 0xF400: set the switches to F400 and press START
+    // ;------------------------------------------------------------------------------
+    // ; Talks over the serial port at 115200 baud, 8N1, like WOZMON. A line holds commands
+    // ; with hexadecimal words of 1 .. 4 digits:
+    // ;   1000            shows 1000: ABCD
+    // ;   1000.103F       shows the words up to 103F, 8 per line
+    // ;   1000: 12 3456   stores words from 1000 on; ": 78" goes on at the next address
+    // ;   1000R           runs from 1000 with JSR: a program that ends with RET comes back
+    // ; The output of a dump has the input format, so a dump can be sent back as it is.
+    // ; ESC cancels the line, Backspace deletes a character. Unknown characters: "?".
+    // ;
+    // ; Registers: R2 = position in the line, R4 = examine address, R5 = store address.
+    // ; The line (80 characters and a 0) is at 0x8580 .. 0x85D0, in the unused frame buffer.
+    // 
+    // .define $MonLine      0x80    ; Low byte of the line address (high byte $VarsHigh)
+    // .define $MonLineEnd   0xD0    ; Low byte of the end of the line: 80 characters
+    // .define $VarMonMode   6       ; 0 examine, 1 store, 2 dump
+    // .define $VarMonOpen   7       ; 1 while an output line is open
+    // .define $VarMonNumber 8       ; The number that was read
+    // 
+    // .org 0xF400
+    // 
+rom[1024] = 16'h200a; // Monitor:      CLI
+rom[1025] = 16'h7afe; //               LDLZ SP 0xFE
+rom[1026] = 16'h790f; //               LDH SP 0x0F
+rom[1027] = 16'h6e1f; //               LDLZ R3 $SerialNot
+rom[1028] = 16'h0d87; //               NOT R3 R3
+rom[1029] = 16'h6200; //               LDLZ R0 0
+rom[1030] = 16'he182; //               STO R0 [R3 +2]              ; CONTROL: 115200 baud, no interrupts
+rom[1031] = 16'h6220; //               LDLZ R0 32
+rom[1032] = 16'h6707; //               LDHZ R1 0x07                ; White on black
+rom[1033] = 16'h6cd8; //               LDL R3 ClearScreen.L
+rom[1034] = 16'h6df2; //               LDH R3 ClearScreen.H
+rom[1035] = 16'hac00; //               JSR [R3]
+rom[1036] = 16'h60f7; //               LDL R0 Mon_Title.L
+rom[1037] = 16'h61f4; //               LDH R0 Mon_Title.H
+rom[1038] = 16'h6c0e; //               LDL R3 Print.L
+rom[1039] = 16'h6df3; //               LDH R3 Print.H
+rom[1040] = 16'hac00; //               JSR [R3]
+rom[1041] = 16'h60e9; //               LDL R0 Mon_Banner.L
+rom[1042] = 16'h61f4; //               LDH R0 Mon_Banner.H
+rom[1043] = 16'hbf92; //               JSR SerialPrint
+rom[1044] = 16'hbcbe; //               JSR Mon_Crlf
+rom[1045] = 16'h7200; //               LDLZ R4 0
+rom[1046] = 16'h7600; //               LDLZ R5 0
+    // 
+    // ; Reads a line
+rom[1047] = 16'h7afe; // Mon_GetLine:  LDLZ SP 0xFE
+rom[1048] = 16'h790f; //               LDH SP 0x0F
+rom[1049] = 16'h6a80; //               LDLZ R2 $MonLine
+rom[1050] = 16'h6985; //               LDH R2 $VarsHigh
+rom[1051] = 16'hbf7c; // Mon_Key:      JSR SerialRead
+rom[1052] = 16'h660d; //               LDLZ R1 13
+rom[1053] = 16'h001e; //               CMP R0 R1
+rom[1054] = 16'h4baa; //               BZS Mon_EndLine
+rom[1055] = 16'h661b; //               LDLZ R1 27
+rom[1056] = 16'h001e; //               CMP R0 R1
+rom[1057] = 16'h4ba3; //               BZS Mon_Escape
+rom[1058] = 16'h6608; //               LDLZ R1 8
+rom[1059] = 16'h001e; //               CMP R0 R1
+rom[1060] = 16'h4b94; //               BZS Mon_Back
+rom[1061] = 16'h667f; //               LDLZ R1 127
+rom[1062] = 16'h001e; //               CMP R0 R1
+rom[1063] = 16'h4b91; //               BZS Mon_Back
+rom[1064] = 16'h47f2; //               BCC Mon_Key                 ; 128 .. 255
+rom[1065] = 16'h6620; //               LDLZ R1 32
+rom[1066] = 16'h001e; //               CMP R0 R1
+rom[1067] = 16'h43ef; //               BCS Mon_Key                 ; Control characters, LF too
+rom[1068] = 16'h6661; //               LDLZ R1 97
+rom[1069] = 16'h001e; //               CMP R0 R1
+rom[1070] = 16'h4382; //               BCS Mon_Put
+rom[1071] = 16'h66df; //               LDLZ R1 0xDF                ; a .. z to upper case
+rom[1072] = 16'h0014; //               AND R0 R0 R1
+rom[1073] = 16'h66d0; // Mon_Put:      LDLZ R1 $MonLineEnd
+rom[1074] = 16'h6585; //               LDH R1 $VarsHigh
+rom[1075] = 16'h011e; //               CMP R2 R1
+rom[1076] = 16'h4be6; //               BZS Mon_Key                 ; The line is full
+rom[1077] = 16'he100; //               STO R0 [R2]
+rom[1078] = 16'h090c; //               INC R2 R2
+rom[1079] = 16'hbf67; //               JSR SerialWrite
+rom[1080] = 16'h9fe2; //               JMP Mon_Key
+rom[1081] = 16'h6680; // Mon_Back:     LDLZ R1 $MonLine
+rom[1082] = 16'h6585; //               LDH R1 $VarsHigh
+rom[1083] = 16'h011e; //               CMP R2 R1
+rom[1084] = 16'h4bde; //               BZS Mon_Key
+rom[1085] = 16'h090f; //               DEC R2 R2
+rom[1086] = 16'h6208; //               LDLZ R0 8
+rom[1087] = 16'hbf5f; //               JSR SerialWrite
+rom[1088] = 16'h6220; //               LDLZ R0 32
+rom[1089] = 16'hbf5d; //               JSR SerialWrite
+rom[1090] = 16'h6208; //               LDLZ R0 8
+rom[1091] = 16'hbf5b; //               JSR SerialWrite
+rom[1092] = 16'h9fd6; //               JMP Mon_Key
+rom[1093] = 16'h625c; // Mon_Escape:   LDLZ R0 92                  ; "\"
+rom[1094] = 16'hbf58; //               JSR SerialWrite
+rom[1095] = 16'hbc8b; //               JSR Mon_Crlf
+rom[1096] = 16'h9fce; //               JMP Mon_GetLine
+    // 
+    // ; Runs the commands of the line
+rom[1097] = 16'h6200; // Mon_EndLine:  LDLZ R0 0
+rom[1098] = 16'he100; //               STO R0 [R2]
+rom[1099] = 16'hbc87; //               JSR Mon_Crlf
+rom[1100] = 16'h6200; //               LDLZ R0 0
+rom[1101] = 16'h6a80; //               LDLZ R2 $MonLine
+rom[1102] = 16'h6985; //               LDH R2 $VarsHigh
+rom[1103] = 16'h6f85; //               LDHZ R3 $VarsHigh
+rom[1104] = 16'he186; //               STO R0 [R3 +$VarMonMode]
+rom[1105] = 16'he187; //               STO R0 [R3 +$VarMonOpen]
+rom[1106] = 16'hc100; // Mon_Next:     LD R0 [R2]
+rom[1107] = 16'h4b9d; //               BZS Mon_Done
+rom[1108] = 16'h090c; //               INC R2 R2
+rom[1109] = 16'h6620; //               LDLZ R1 32
+rom[1110] = 16'h001e; //               CMP R0 R1
+rom[1111] = 16'h4bfa; //               BZS Mon_Next
+rom[1112] = 16'h6652; //               LDLZ R1 82                  ; "R"
+rom[1113] = 16'h001e; //               CMP R0 R1
+rom[1114] = 16'h4b9d; //               BZS Mon_Run
+rom[1115] = 16'h662e; //               LDLZ R1 46                  ; "."
+rom[1116] = 16'h001e; //               CMP R0 R1
+rom[1117] = 16'h4b8d; //               BZS Mon_Dot
+rom[1118] = 16'h663a; //               LDLZ R1 58                  ; ":"
+rom[1119] = 16'h001e; //               CMP R0 R1
+rom[1120] = 16'h4b8c; //               BZS Mon_Colon
+rom[1121] = 16'hbc75; //               JSR Mon_HexDigit
+rom[1122] = 16'h4390; //               BCS Mon_Error
+rom[1123] = 16'h0408; //               LD R1 R0
+rom[1124] = 16'hc100; // Mon_Digits:   LD R0 [R2]
+rom[1125] = 16'hbc71; //               JSR Mon_HexDigit
+rom[1126] = 16'h439a; //               BCS Mon_Number
+rom[1127] = 16'h090c; //               INC R2 R2
+rom[1128] = 16'h24b1; //               SHL R1 R1 4
+rom[1129] = 16'h0485; //               OR R1 R1 R0
+rom[1130] = 16'h9ff9; //               JMP Mon_Digits
+rom[1131] = 16'h6202; // Mon_Dot:      LDLZ R0 2
+rom[1132] = 16'h9c01; //               JMP Mon_SetMode
+rom[1133] = 16'h6201; // Mon_Colon:    LDLZ R0 1
+rom[1134] = 16'h6f85; // Mon_SetMode:  LDHZ R3 $VarsHigh
+rom[1135] = 16'he186; //               STO R0 [R3 +$VarMonMode]
+rom[1136] = 16'h9fe1; //               JMP Mon_Next
+rom[1137] = 16'hbc5c; // Mon_Done:     JSR Mon_Close
+rom[1138] = 16'h9fa4; //               JMP Mon_GetLine
+rom[1139] = 16'hbc5a; // Mon_Error:    JSR Mon_Close
+rom[1140] = 16'h623f; //               LDLZ R0 63                  ; "?"
+rom[1141] = 16'hbf29; //               JSR SerialWrite
+rom[1142] = 16'hbc5c; //               JSR Mon_Crlf
+rom[1143] = 16'h9f9f; //               JMP Mon_GetLine
+    // 
+    // ; Runs the program at the examine address. Afterwards: 115200 baud, no interrupts.
+rom[1144] = 16'hbc55; // Mon_Run:      JSR Mon_Close
+rom[1145] = 16'hb000; //               JSR [R4]
+rom[1146] = 16'h200a; //               CLI
+rom[1147] = 16'h6e1f; //               LDLZ R3 $SerialNot
+rom[1148] = 16'h0d87; //               NOT R3 R3
+rom[1149] = 16'h6200; //               LDLZ R0 0
+rom[1150] = 16'he182; //               STO R0 [R3 +2]
+rom[1151] = 16'hbc53; //               JSR Mon_Crlf
+rom[1152] = 16'h9f96; //               JMP Mon_GetLine
+    // 
+    // ; A number: a ":" after it makes it the store address
+rom[1153] = 16'h6f85; // Mon_Number:   LDHZ R3 $VarsHigh
+rom[1154] = 16'he588; //               STO R1 [R3 +$VarMonNumber]
+rom[1155] = 16'h0508; //               LD R1 R2
+rom[1156] = 16'hc080; // Mon_Look:     LD R0 [R1]
+rom[1157] = 16'h6e20; //               LDLZ R3 32
+rom[1158] = 16'h003e; //               CMP R0 R3
+rom[1159] = 16'h4f82; //               BZC Mon_Looked
+rom[1160] = 16'h048c; //               INC R1 R1
+rom[1161] = 16'h9ffa; //               JMP Mon_Look
+rom[1162] = 16'h6e3a; // Mon_Looked:   LDLZ R3 58
+rom[1163] = 16'h003e; //               CMP R0 R3
+rom[1164] = 16'h4f86; //               BZC Mon_Use
+rom[1165] = 16'h088c; //               INC R2 R1                   ; Behind the ":"
+rom[1166] = 16'h6f85; //               LDHZ R3 $VarsHigh
+rom[1167] = 16'hd588; //               LD R5 [R3 +$VarMonNumber]
+rom[1168] = 16'h6201; //               LDLZ R0 1
+rom[1169] = 16'he186; //               STO R0 [R3 +$VarMonMode]
+rom[1170] = 16'h9fbf; //               JMP Mon_Next
+rom[1171] = 16'h0408; // Mon_Use:      LD R1 R0                    ; The character after the number
+rom[1172] = 16'h6f85; //               LDHZ R3 $VarsHigh
+rom[1173] = 16'hc186; //               LD R0 [R3 +$VarMonMode]
+rom[1174] = 16'h4b86; //               BZS Mon_Examine
+rom[1175] = 16'h2000; //               SHR R0 R0
+rom[1176] = 16'h478b; //               BCC Mon_Dump
+rom[1177] = 16'hc188; //               LD R0 [R3 +$VarMonNumber]   ; Store
+rom[1178] = 16'he280; //               STO R0 [R5]
+rom[1179] = 16'h168c; //               INC R5 R5
+rom[1180] = 16'h9fb5; //               JMP Mon_Next
+rom[1181] = 16'hd188; // Mon_Examine:  LD R4 [R3 +$VarMonNumber]
+rom[1182] = 16'h1608; //               LD R5 R4
+rom[1183] = 16'h6252; //               LDLZ R0 82
+rom[1184] = 16'h001e; //               CMP R0 R1
+rom[1185] = 16'h4b81; //               BZS Mon_Examined            ; "R" follows: run without showing
+rom[1186] = 16'hbc0e; //               JSR Mon_Line
+rom[1187] = 16'h9fae; // Mon_Examined: JMP Mon_Next
+rom[1188] = 16'h6f85; // Mon_Dump:     LDHZ R3 $VarsHigh
+rom[1189] = 16'hc188; //               LD R0 [R3 +$VarMonNumber]
+rom[1190] = 16'h020e; //               CMP R4 R0
+rom[1191] = 16'h4381; //               BCS Mon_DumpNext            ; Up to the number
+rom[1192] = 16'h9fa9; //               JMP Mon_Next
+rom[1193] = 16'h120c; // Mon_DumpNext: INC R4 R4
+rom[1194] = 16'h6207; //               LDLZ R0 7
+rom[1195] = 16'h0044; //               AND R0 R0 R4
+rom[1196] = 16'h4f82; //               BZC Mon_DumpWord
+rom[1197] = 16'hbc03; //               JSR Mon_Line
+rom[1198] = 16'h9ff5; //               JMP Mon_Dump
+rom[1199] = 16'hbc09; // Mon_DumpWord: JSR Mon_Value
+rom[1200] = 16'h9ff3; //               JMP Mon_Dump
+    // 
+    // ; Starts an output line: "1000: ABCD" for the word at R4
+rom[1201] = 16'hbc1c; // Mon_Line:     JSR Mon_Close
+rom[1202] = 16'h6f85; //               LDHZ R3 $VarsHigh
+rom[1203] = 16'h6201; //               LDLZ R0 1
+rom[1204] = 16'he187; //               STO R0 [R3 +$VarMonOpen]
+rom[1205] = 16'h0208; //               LD R0 R4
+rom[1206] = 16'hbc05; //               JSR Mon_Hex4
+rom[1207] = 16'h623a; //               LDLZ R0 58
+rom[1208] = 16'hbee6; //               JSR SerialWrite
+    // ; Shows " ABCD", the word at R4
+rom[1209] = 16'h6220; // Mon_Value:    LDLZ R0 32
+rom[1210] = 16'hbee4; //               JSR SerialWrite
+rom[1211] = 16'hc200; //               LD R0 [R4]
+    // ; Sends R0 as 4 hexadecimal digits
+rom[1212] = 16'h280c; // Mon_Hex4:     PSH R2
+rom[1213] = 16'h0808; //               LD R2 R0
+rom[1214] = 16'hbc05; //               JSR Mon_HexHigh
+rom[1215] = 16'hbc04; //               JSR Mon_HexHigh
+rom[1216] = 16'hbc03; //               JSR Mon_HexHigh
+rom[1217] = 16'hbc02; //               JSR Mon_HexHigh
+rom[1218] = 16'h280d; //               POP R2
+rom[1219] = 16'h3c0d; //               RET
+    // ; Sends the digit of bits 15 .. 12 of R2, and shifts R2 left by 4
+rom[1220] = 16'h2170; // Mon_HexHigh:  SHR R0 R2 8
+rom[1221] = 16'h2030; //               SHR R0 R0 4
+rom[1222] = 16'h2931; //               SHL R2 R2 4
+rom[1223] = 16'h660a; //               LDLZ R1 10
+rom[1224] = 16'h001e; //               CMP R0 R1
+rom[1225] = 16'h6630; //               LDLZ R1 48                  ; "0"
+rom[1226] = 16'h4381; //               BCS Mon_HexOut
+rom[1227] = 16'h6637; //               LDLZ R1 55                  ; "A" - 10
+rom[1228] = 16'h0010; // Mon_HexOut:   ADD R0 R0 R1
+rom[1229] = 16'h9ed1; //               JMP SerialWrite
+    // 
+    // ; Ends an open output line
+rom[1230] = 16'h6f85; // Mon_Close:    LDHZ R3 $VarsHigh
+rom[1231] = 16'hc187; //               LD R0 [R3 +$VarMonOpen]
+rom[1232] = 16'h4b95; //               BZS Mon_Return
+rom[1233] = 16'h6200; //               LDLZ R0 0
+rom[1234] = 16'he187; //               STO R0 [R3 +$VarMonOpen]
+rom[1235] = 16'h620d; // Mon_Crlf:     LDLZ R0 13
+rom[1236] = 16'hbeca; //               JSR SerialWrite
+rom[1237] = 16'h620a; //               LDLZ R0 10
+rom[1238] = 16'h9ec8; //               JMP SerialWrite
+    // 
+    // ; R0: character "0" .. "9", "A" .. "F" -> value and C = 0; other characters: C = 1
+rom[1239] = 16'h6e30; // Mon_HexDigit: LDLZ R3 48
+rom[1240] = 16'h0032; //               SUB R0 R0 R3
+rom[1241] = 16'h438c; //               BCS Mon_Return
+rom[1242] = 16'h6e0a; //               LDLZ R3 10
+rom[1243] = 16'h003e; //               CMP R0 R3
+rom[1244] = 16'h438a; //               BCS Mon_HexOk
+rom[1245] = 16'h6e07; //               LDLZ R3 7
+rom[1246] = 16'h0032; //               SUB R0 R0 R3
+rom[1247] = 16'h6e0a; //               LDLZ R3 10
+rom[1248] = 16'h003e; //               CMP R0 R3
+rom[1249] = 16'h4384; //               BCS Mon_Return
+rom[1250] = 16'h6e10; //               LDLZ R3 16
+rom[1251] = 16'h003e; //               CMP R0 R3
+rom[1252] = 16'h4382; //               BCS Mon_HexOk
+rom[1253] = 16'h2009; //               SEC
+rom[1254] = 16'h3c0d; // Mon_Return:   RET
+rom[1255] = 16'h2008; // Mon_HexOk:    CLC
+rom[1256] = 16'h3c0d; //               RET
+    // 
+rom[1257] = 16'h000d; // .data 13, 10
+rom[1258] = 16'h000a;
+rom[1259] = 16'h004b; // .cstring "K16 Monitor"
+rom[1260] = 16'h0031;
+rom[1261] = 16'h0036;
+rom[1262] = 16'h0020;
+rom[1263] = 16'h004d;
+rom[1264] = 16'h006f;
+rom[1265] = 16'h006e;
+rom[1266] = 16'h0069;
+rom[1267] = 16'h0074;
+rom[1268] = 16'h006f;
+rom[1269] = 16'h0072;
+rom[1270] = 16'h0000;
+rom[1271] = 16'h004b; // .cstring "K16 Monitor: serial port 115200 8N1"
+rom[1272] = 16'h0031;
+rom[1273] = 16'h0036;
+rom[1274] = 16'h0020;
+rom[1275] = 16'h004d;
+rom[1276] = 16'h006f;
+rom[1277] = 16'h006e;
+rom[1278] = 16'h0069;
+rom[1279] = 16'h0074;
+rom[1280] = 16'h006f;
+rom[1281] = 16'h0072;
+rom[1282] = 16'h003a;
+rom[1283] = 16'h0020;
+rom[1284] = 16'h0073;
+rom[1285] = 16'h0065;
+rom[1286] = 16'h0072;
+rom[1287] = 16'h0069;
+rom[1288] = 16'h0061;
+rom[1289] = 16'h006c;
+rom[1290] = 16'h0020;
+rom[1291] = 16'h0070;
+rom[1292] = 16'h006f;
+rom[1293] = 16'h0072;
+rom[1294] = 16'h0074;
+rom[1295] = 16'h0020;
+rom[1296] = 16'h0031;
+rom[1297] = 16'h0031;
+rom[1298] = 16'h0035;
+rom[1299] = 16'h0032;
+rom[1300] = 16'h0030;
+rom[1301] = 16'h0030;
+rom[1302] = 16'h0020;
+rom[1303] = 16'h0038;
+rom[1304] = 16'h004e;
+rom[1305] = 16'h0031;
+rom[1306] = 16'h0000;
+    // Unused words
+rom[943] = 16'h0000;
+rom[944] = 16'h0000;
+rom[945] = 16'h0000;
+rom[946] = 16'h0000;
+rom[947] = 16'h0000;
+rom[948] = 16'h0000;
+rom[949] = 16'h0000;
+rom[950] = 16'h0000;
+rom[951] = 16'h0000;
+rom[952] = 16'h0000;
+rom[953] = 16'h0000;
+rom[954] = 16'h0000;
+rom[955] = 16'h0000;
+rom[956] = 16'h0000;
+rom[957] = 16'h0000;
+rom[958] = 16'h0000;
+rom[959] = 16'h0000;
+rom[960] = 16'h0000;
+rom[961] = 16'h0000;
+rom[962] = 16'h0000;
+rom[963] = 16'h0000;
+rom[964] = 16'h0000;
+rom[965] = 16'h0000;
+rom[966] = 16'h0000;
+rom[967] = 16'h0000;
+rom[968] = 16'h0000;
+rom[969] = 16'h0000;
+rom[970] = 16'h0000;
+rom[971] = 16'h0000;
+rom[972] = 16'h0000;
+rom[973] = 16'h0000;
+rom[974] = 16'h0000;
+rom[975] = 16'h0000;
+rom[976] = 16'h0000;
+rom[977] = 16'h0000;
+rom[978] = 16'h0000;
+rom[979] = 16'h0000;
+rom[980] = 16'h0000;
+rom[981] = 16'h0000;
+rom[982] = 16'h0000;
+rom[983] = 16'h0000;
+rom[984] = 16'h0000;
+rom[985] = 16'h0000;
+rom[986] = 16'h0000;
+rom[987] = 16'h0000;
+rom[988] = 16'h0000;
+rom[989] = 16'h0000;
+rom[990] = 16'h0000;
+rom[991] = 16'h0000;
+rom[992] = 16'h0000;
+rom[993] = 16'h0000;
+rom[994] = 16'h0000;
+rom[995] = 16'h0000;
+rom[996] = 16'h0000;
+rom[997] = 16'h0000;
+rom[998] = 16'h0000;
+rom[999] = 16'h0000;
+rom[1000] = 16'h0000;
+rom[1001] = 16'h0000;
+rom[1002] = 16'h0000;
+rom[1003] = 16'h0000;
+rom[1004] = 16'h0000;
+rom[1005] = 16'h0000;
+rom[1006] = 16'h0000;
+rom[1007] = 16'h0000;
+rom[1008] = 16'h0000;
+rom[1009] = 16'h0000;
+rom[1010] = 16'h0000;
+rom[1011] = 16'h0000;
+rom[1012] = 16'h0000;
+rom[1013] = 16'h0000;
+rom[1014] = 16'h0000;
+rom[1015] = 16'h0000;
+rom[1016] = 16'h0000;
+rom[1017] = 16'h0000;
+rom[1018] = 16'h0000;
+rom[1019] = 16'h0000;
+rom[1020] = 16'h0000;
+rom[1021] = 16'h0000;
+rom[1022] = 16'h0000;
+rom[1023] = 16'h0000;
     end
 endmodule
 

@@ -35,7 +35,7 @@ flowchart TB
 
     ram["K16SinglePortRam: 4096 words"]
     fb["K16FrameBufferRam: 2048 words"]
-    rom["K16Rom: 1024 words"]
+    rom["K16Rom: 1536 words, library and monitor"]
     io["K16Io: I/O and sigma-delta DAC"]
     psg["K16Psg: sound chip"]
     serial["K16Serial: serial port and INT_CAUSE"]
@@ -86,7 +86,7 @@ flowchart TB
 | `K16CharacterRam` | `K16Ram.v` | write port for the CPU, read port for the video | Characters 128 .. 255 (block RAM); at power-up the logo tiles of the start screen. |
 | `K16FrameBufferRam` | `K16Ram.v` | write port for the CPU, one read port for video and CPU | 2048 words: text, pixel blocks, sprite images; at power-up the start screen. |
 | `K16SinglePortRam` | `K16Ram.v` | `addr[11:0]`, `din`, `write_en`, `dout` | The 4096-word RAM with the default program. |
-| `K16Rom` | `K16Rom.v` | `addr[9:0]`, `dout` | The 1024-word ROM library (generated from `K16Rom.asm`). |
+| `K16Rom` | `K16Rom.v` | `addr[10:0]`, `dout` | The 1536-word ROM: the library at 0xF000 and the monitor at 0xF400 (generated from `K16Rom.asm`). |
 | `K16Io` | `K16Io.v` | `addr[2:0]`, `din`, `write_en`, `dout`; panel pins; `psg_level[9:0]`; `stop`, `reset`, `sound` | Front panel scanning (switches and LEDs), clock counter, sound divider, the sigma-delta DAC for the sound pin (sound chip plus square wave), and the STOP and RESET keys. |
 | `K16Psg` | `K16Psg.v` | `addr[3:0]`, `din[7:0]`, `write_en`, `dout[7:0]`; `level[9:0]` | The sound chip like the AY-3-8910: three tone channels, noise, mixer, volume, envelope; `level` is the sum of the channels (0 .. 765). |
 | `K16Serial` | `K16Serial.v` | `select`, `addr[1:0]`, `write`, `din`, `dout`; `frame`; `irq`; `rx`, `tx` | The serial port (8N1, 300 .. 115200 baud, 16-byte receive buffer) and INT_CAUSE. It finds the CPU's accesses itself: a write in its first clock, a read when the CPU leaves the address. |
@@ -100,7 +100,7 @@ All block RAMs have a registered output: the data of an address appears one cloc
 | `0x0000 .. 0x0FFF` | `0000 xxxx xxxx xxxx` | RAM; `0x0FFF` holds the interrupt vector |
 | `0x8000 .. 0x87FF` | `1000 0xxx xxxx xxxx` | Frame buffer (`0x8600 .. 0x87FF` are the sprite images) |
 | `0x8800 .. 0x89FF` | `1000 100x xxxx xxxx` | Changeable characters, write only |
-| `0xF000 .. 0xF3FF` | `1111 00xx xxxx xxxx` | ROM |
+| `0xF000 .. 0xF5FF` | `1111 00xx xxxx xxxx`, `1111 010x xxxx xxxx` | ROM: library and monitor |
 | `0xFFD0 .. 0xFFDF` | `1111 1111 1101 xxxx` | Sound chip registers R0 .. R15 (R14, R15 read 0) |
 | `0xFFE0 .. 0xFFE3` | `1111 1111 1110 00xx` | Serial port: DATA, STATUS, CONTROL, INT_CAUSE |
 | `0xFFE8 .. 0xFFF7` | `1111 1111 1110 1xxx`, `1111 1111 1111 0xxx` | Sprite registers |

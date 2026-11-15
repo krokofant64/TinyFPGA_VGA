@@ -1,6 +1,6 @@
 // ----------------------------------------------------------------------------
 // Complete computer (top.v): the memory map. A program reads and writes at
-// the boundaries of RAM (0x0000 .. 0x0FFF), ROM (0xF000 .. 0xF3FF), frame
+// the boundaries of RAM (0x0000 .. 0x0FFF), ROM (0xF000 .. 0xF5FF), frame
 // buffer (0x8000 .. 0x87FF), changeable characters (0x8800 .. 0x89FF, write
 // only), sound chip (0xFFD0 .. 0xFFDF), sprite registers (0xFFE8 .. 0xFFF7),
 // and I/O (0xFFF8 .. 0xFFFF),
@@ -75,11 +75,11 @@ module K16MemoryMap_tb();
       dut.ram.mem['h0014] = 16'he080; //          STO R0 [R1]
       dut.ram.mem['h0015] = 16'hc880; //          LD R2 [R1]
       dut.ram.mem['h0016] = 16'hea84; //          STO R2 [R5 +4]          ; still rom[0]
-      dut.ram.mem['h0017] = 16'h64ff; //          LDL R1 0xF3FF.L
-      dut.ram.mem['h0018] = 16'h65f3; //          LDH R1 0xF3FF.H
+      dut.ram.mem['h0017] = 16'h64ff; //          LDL R1 0xF5FF.L
+      dut.ram.mem['h0018] = 16'h65f5; //          LDH R1 0xF5FF.H
       dut.ram.mem['h0019] = 16'hc880; //          LD R2 [R1]
-      dut.ram.mem['h001a] = 16'hea85; //          STO R2 [R5 +5]          ; rom[0x3FF]
-      dut.ram.mem['h001b] = 16'h048c; //          INC R1 R1               ; 0xF400 is not ROM
+      dut.ram.mem['h001a] = 16'hea85; //          STO R2 [R5 +5]          ; rom[0x5FF]
+      dut.ram.mem['h001b] = 16'h048c; //          INC R1 R1               ; 0xF600 is not ROM
       dut.ram.mem['h001c] = 16'hc880; //          LD R2 [R1]
       dut.ram.mem['h001d] = 16'hea86; //          STO R2 [R5 +6]          ; 0x9FFF
       //          ; Frame buffer: first and last word, and the word after it
@@ -197,8 +197,8 @@ module K16MemoryMap_tb();
       test_section("Memory map: ROM");
       check_equal(dut.ram.mem[16'h0E03], dut.rom.rom[0], "ROM 0xF000");
       check_equal(dut.ram.mem[16'h0E04], dut.rom.rom[0], "writing ROM is ignored");
-      check_equal(dut.ram.mem[16'h0E05], dut.rom.rom[10'h3FF], "ROM 0xF3FF");
-      check_equal(dut.ram.mem[16'h0E06], 16'h9FFF, "0xF400 reads as 0x9FFF");
+      check_equal(dut.ram.mem[16'h0E05], dut.rom.rom[11'h5FF], "ROM 0xF5FF");
+      check_equal(dut.ram.mem[16'h0E06], 16'h9FFF, "0xF600 reads as 0x9FFF");
 
       test_section("Memory map: frame buffer");
       check_equal(dut.ram.mem[16'h0E07], 16'h1234, "frame buffer 0x8000 read back");

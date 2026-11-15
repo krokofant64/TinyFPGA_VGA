@@ -78,7 +78,7 @@ module K16Computer(clk_16,
   reg  [15:0] ram_din_bus;
   reg         ram_write;
 
-  reg  [9:0]  rom_addr_bus;
+  reg  [10:0] rom_addr_bus;
   wire [15:0] rom_dout_bus;
 
   reg  [2:0]  io_addr_bus;
@@ -274,7 +274,7 @@ module K16Computer(clk_16,
             frame_buffer_din_bus <= cpu_dout_bus;
             io_din_bus <= 0;
           end
-          16'b111100??????????: // ROM F000 - F3FF
+          16'b111100??????????, 16'b1111010?????????: // ROM F000 - F5FF: library and monitor
             begin
               ram_write <= 0;
               frame_buffer_write <= 0;
@@ -284,7 +284,7 @@ module K16Computer(clk_16,
               ram_addr_bus <= 0;
               frame_buffer_waddr_bus <= 0;
               io_addr_bus <= 0;
-              rom_addr_bus <= cpu_addr_bus[9:0];
+              rom_addr_bus <= cpu_addr_bus[10:0];
 
               cpu_din_bus <= rom_dout_bus;
               ram_din_bus <= 0;

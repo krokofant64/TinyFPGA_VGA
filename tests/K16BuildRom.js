@@ -10,7 +10,7 @@
 // ----------------------------------------------------------------------------
 
 var romAddress = 0xF000;
-var romSize = 1024;
+var romSize = 1536;     // 0xF000 .. 0xF5FF: the library, and the monitor at 0xF400
 
 var fso = new ActiveXObject("Scripting.FileSystemObject");
 
@@ -72,6 +72,18 @@ for (var address in assembler.code)
    }
    image[index] = assembler.code[address];
 }
+var used = 0;
+for (var i = 0; i < image.length; i++)
+{
+   if (image[i] == undefined)
+   {
+      image[i] = 0;        // Unused word between the library and the monitor
+   }
+   else
+   {
+      used++;
+   }
+}
 if (image.length > romSize)
 {
    fail("K16Rom.asm: " + image.length + " words, the ROM has " + romSize);
@@ -95,13 +107,13 @@ verilog.push("`define K16ROM_V");
 verilog.push("");
 verilog.push("// Generated from K16Rom.asm by tests\\BuildRom.ps1. Do not edit.");
 verilog.push("module K16Rom (addr, clk, dout);// " + romSize + "x16");
-verilog.push("  parameter addr_width = 10;");
+verilog.push("  parameter addr_width = 11;");
 verilog.push("  parameter data_width = 16;");
 verilog.push("  input [addr_width-1:0] addr;");
 verilog.push("  input clk;");
 verilog.push("  output [data_width-1:0] dout;");
 verilog.push("  reg [data_width-1:0] dout; // Register for output.");
-verilog.push("  reg [data_width-1:0] rom [(1<<addr_width)-1:0];");
+verilog.push("  reg [data_width-1:0] rom [" + (romSize - 1) + ":0];");
 verilog.push("  always @(posedge clk)");
 verilog.push("    begin");
 verilog.push("      dout <= rom[addr]; // Output register controlled by clock.");
@@ -126,6 +138,14 @@ for (var i = 0; i < assembler.sourceCode.length; i++)
    {
       verilog.push("rom[" + (line.address + j - romAddress) + "] = 16'h" + hex4(assembler.code[line.address + j]) +
                    ";" + (j == 0 ? " // " + text : ""));
+   }
+}
+verilog.push("    // Unused words");
+for (var i = 0; i < image.length; i++)
+{
+   if (assembler.code[romAddress + i] == undefined)
+   {
+      verilog.push("rom[" + i + "] = 16'h0000;");
    }
 }
 verilog.push("    end");
@@ -159,4 +179,4 @@ for (var i = 0; i < symbols.length; i++)
 script.push("};");
 writeFile(outputFolder + "\\K16RomImage.js", script);
 
-WScript.Echo("ROM: " + image.length + " of " + romSize + " words, " + symbols.length + " public symbols");
+WScript.Echo("ROM: " + used + " of " + romSize + " words used (up to 0x" + hex4(romAddress + image.length - 1) + "), " + symbols.length + " public symbols");
