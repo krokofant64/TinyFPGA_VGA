@@ -31,7 +31,7 @@ The computer has a JavaScript emulator, an assembler and a C compiler, all in th
   - **Flags:** CLC, SEC, CLI, SEI
   - **Stop:** HLT
 - **ROM library:** routines for C and assembler: arithmetic, strings, text, scrolling, graphics, sprites, sound, time, interrupts and the serial port.
-- **Monitor:** a monitor like WOZMON in ROM at 0xF400. Over the serial port it shows and changes memory, loads programs (the website's "Generate Monitor" writes them in its format) and runs them. Start it with the data switches at F400 and START.
+- **Monitor:** a monitor like WOZMON in ROM at 0xF400. Over the serial port it shows and changes memory, loads programs (the website's "Generate Monitor" writes them in its format) and runs them. Start it with the data switches at F400 and START. The website's terminal talks to it over Web Serial (Chrome or Edge), and its "Send program" loads the program line by line.
 - **Clock:** 25 MHz, from the PLL out of the board's 16 MHz oscillator.
 - **Video:**
   - **Text:** 40 x 30 characters in 8 colors. Characters 0 .. 127 are fixed, the program can change characters 128 .. 255.
